@@ -2,6 +2,12 @@ import type { CheckMaintenanceOptions, MaintenanceInfo } from './types'
 
 export type { CheckMaintenanceOptions, MaintenanceInfo } from './types'
 export { formatMaintenancePeriod } from './format'
+export {
+  DEFAULT_BYPASS_KEY,
+  isBypassActiveValue,
+  resolveBypassStorageKey,
+} from './bypass'
+export type { MaintenanceBypassOption } from './bypass'
 
 /** 응답 JSON이 MaintenanceInfo 형태인지 검사하는 타입 가드 */
 export function isMaintenanceInfo(value: unknown): value is MaintenanceInfo {
