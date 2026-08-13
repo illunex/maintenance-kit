@@ -50,6 +50,16 @@
         "default": "./dist/next.cjs"
       }
     },
+    "./next/server": {
+      "import": {
+        "types": "./dist/next-server.d.ts",
+        "default": "./dist/next-server.js"
+      },
+      "require": {
+        "types": "./dist/next-server.d.cts",
+        "default": "./dist/next-server.cjs"
+      }
+    },
     "./package.json": "./package.json"
   },
   "files": [
@@ -91,6 +101,7 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "jsdom": "^26.1.0",
+    "next": "^16.3.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "tsup": "^8.5.1",

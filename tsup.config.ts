@@ -25,4 +25,9 @@ export default defineConfig([
     entry: { next: 'src/next/index.tsx' },
     banner: { js: "'use client';" },
   },
+  // 서버 컴포넌트 게이트 — 'use client' 배너를 붙이면 안 된다
+  {
+    ...shared,
+    entry: { 'next-server': 'src/next-server/index.tsx' },
+  },
 ])
