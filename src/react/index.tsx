@@ -45,6 +45,8 @@ export interface MaintenanceProviderProps extends CheckMaintenanceOptions {
   children: ReactNode
   /** 점검 중일 때 children 대신 렌더링할 화면 (미지정 시 기본 화면) */
   fallback?: ReactNode
+  /** 상태 확인 중(loading)에 렌더링할 화면 (기본 null — 아무것도 표시하지 않음) */
+  loading?: ReactNode
   /**
    * 개발자 통과(dev bypass) 설정.
    * - 생략/true: 기본 활성(기본 키), false: 비활성, { storageKey }: 키 커스텀
@@ -78,6 +80,7 @@ export function MaintenanceProvider({
   cacheBuster,
   fetchOptions,
   fallback,
+  loading,
   bypass,
   children,
 }: MaintenanceProviderProps) {
@@ -115,9 +118,11 @@ export function MaintenanceProvider({
 
   return (
     <MaintenanceContext.Provider value={value}>
-      {value.status === 'maintenance' && !value.bypassed
-        ? (fallback ?? <DefaultMaintenanceScreen info={value.info} />)
-        : children}
+      {value.status === 'loading'
+        ? (loading ?? null)
+        : value.status === 'maintenance' && !value.bypassed
+          ? (fallback ?? <DefaultMaintenanceScreen info={value.info} />)
+          : children}
     </MaintenanceContext.Provider>
   )
 }

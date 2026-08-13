@@ -28,6 +28,29 @@ afterEach(() => {
   window.localStorage.clear()
 })
 
+describe('MaintenanceProvider 로딩 차단', () => {
+  it('로딩 중에는 children을 렌더하지 않는다 (점검 플래시 방지)', () => {
+    vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})))
+    render(
+      <MaintenanceProvider url={JSON_URL}>
+        <div>실제 앱</div>
+      </MaintenanceProvider>,
+    )
+    expect(screen.queryByText('실제 앱')).toBeNull()
+  })
+
+  it('loading prop 지정 시 로딩 중 해당 화면을 렌더한다', () => {
+    vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})))
+    render(
+      <MaintenanceProvider url={JSON_URL} loading={<div>확인 중…</div>}>
+        <div>실제 앱</div>
+      </MaintenanceProvider>,
+    )
+    expect(screen.getByText('확인 중…')).toBeDefined()
+    expect(screen.queryByText('실제 앱')).toBeNull()
+  })
+})
+
 describe('MaintenanceProvider dev bypass', () => {
   it('점검 중 + 플래그 없음 → 점검 화면을 렌더한다', async () => {
     stubMaintenanceFetch(true)
