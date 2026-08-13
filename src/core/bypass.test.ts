@@ -6,6 +6,10 @@ import {
 } from './bypass'
 
 describe('resolveBypassStorageKey', () => {
+  it('기본 키는 쿠키 이름으로도 쓸 수 있는 형태다', () => {
+    expect(DEFAULT_BYPASS_KEY).toBe('maintenance-kit-bypass')
+  })
+
   it('생략하거나 true면 기본 키를 반환한다', () => {
     expect(resolveBypassStorageKey(undefined)).toBe(DEFAULT_BYPASS_KEY)
     expect(resolveBypassStorageKey(true)).toBe(DEFAULT_BYPASS_KEY)

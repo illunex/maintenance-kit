@@ -72,9 +72,9 @@ secret이 포함되지 않습니다.
 
 ```js
 // 통과 켜기 (새로고침 후 적용)
-localStorage.setItem('maintenance-kit:bypass', '1')
+localStorage.setItem('maintenance-kit-bypass', '1')
 // 통과 끄기
-localStorage.removeItem('maintenance-kit:bypass')
+localStorage.removeItem('maintenance-kit-bypass')
 ```
 
 설정:

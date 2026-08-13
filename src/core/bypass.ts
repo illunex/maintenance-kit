@@ -1,5 +1,5 @@
-/** dev bypass 플래그를 저장하는 localStorage 기본 키 */
-export const DEFAULT_BYPASS_KEY = 'maintenance-kit:bypass'
+/** dev bypass 플래그를 저장하는 기본 키 (localStorage·쿠키 공용, 쿠키 이름 제약상 ':' 불가) */
+export const DEFAULT_BYPASS_KEY = 'maintenance-kit-bypass'
 
 /**
  * MaintenanceProvider의 dev bypass 설정.
