@@ -123,7 +123,7 @@ document.cookie = 'maintenance-kit-bypass=; path=/; max-age=0'
 
 - `checkMaintenance({ url, cacheBuster?, fetchOptions? })` — fetch and validate the maintenance JSON
 - `isMaintenanceInfo(value)` — type guard for the JSON shape
-- `<MaintenanceProvider url fallback? loading? bypass?>` — renders `fallback` (or a default screen) while `isMaintenance` is `true`; 로딩 중에는 `loading`(기본 빈 화면)을 렌더해 점검 플래시를 방지; `bypass`로 dev bypass 제어
+- `<MaintenanceProvider url fallback? loading? loadingBackground? bypass?>` — renders `fallback` (or a default screen) while `isMaintenance` is `true`; 로딩 중에는 `loading`(기본 빈 화면)을 렌더해 점검 플래시를 방지, `loadingBackground`로 빈 화면 배경색 지정(다크 모드 서비스 테마 통일용); `bypass`로 dev bypass 제어
 - `<MaintenanceGate url fallback? bypass?>` (`/next/server`) — 서버 컴포넌트 게이트, SSR에서 점검 화면을 HTML로 렌더 (bypass는 쿠키)
 - `useMaintenance()` — read `{ status, info, bypassed }` from context
 

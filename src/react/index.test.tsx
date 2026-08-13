@@ -49,6 +49,32 @@ describe('MaintenanceProvider 로딩 차단', () => {
     expect(screen.getByText('확인 중…')).toBeDefined()
     expect(screen.queryByText('실제 앱')).toBeNull()
   })
+
+  it('loadingBackground 지정 시 로딩 중 해당 배경색의 빈 화면을 렌더한다', () => {
+    vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})))
+    const { container } = render(
+      <MaintenanceProvider url={JSON_URL} loadingBackground="#0a0a0a">
+        <div>실제 앱</div>
+      </MaintenanceProvider>,
+    )
+    const blank = container.firstElementChild as HTMLElement
+    expect(blank.style.backgroundColor).toBe('rgb(10, 10, 10)')
+    expect(screen.queryByText('실제 앱')).toBeNull()
+  })
+
+  it('loading prop이 있으면 loadingBackground보다 우선한다', () => {
+    vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})))
+    render(
+      <MaintenanceProvider
+        url={JSON_URL}
+        loading={<div>확인 중…</div>}
+        loadingBackground="#0a0a0a"
+      >
+        <div>실제 앱</div>
+      </MaintenanceProvider>,
+    )
+    expect(screen.getByText('확인 중…')).toBeDefined()
+  })
 })
 
 describe('MaintenanceProvider dev bypass', () => {

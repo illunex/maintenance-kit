@@ -119,3 +119,11 @@ document.cookie = 'maintenance-kit-bypass=; path=/; max-age=0'
 ## 8. 버전
 
 - `0.2.0`으로 범프. 배포(`pnpm publish`)는 구현·검증 완료 후 별도 진행.
+
+## 9. 부록: loadingBackground (배포 전 추가, 2026-08-13)
+
+다크 모드 서비스에서 로딩 중 기본 빈 화면(흰색)이 테마를 깨는 문제 해결.
+
+- `MaintenanceProviderProps.loadingBackground?: string` (CSS 색상) 추가.
+- 로딩 중 렌더 우선순위: `loading` > `loadingBackground`(해당 배경색의 `minHeight: 100vh` 전체 화면 div, `aria-hidden`) > `null`.
+- SSR 게이트는 로딩 상태가 없으므로 해당 없음. v0.2.0에 포함.

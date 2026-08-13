@@ -47,6 +47,8 @@ export interface MaintenanceProviderProps extends CheckMaintenanceOptions {
   fallback?: ReactNode
   /** 상태 확인 중(loading)에 렌더링할 화면 (기본 null — 아무것도 표시하지 않음) */
   loading?: ReactNode
+  /** 상태 확인 중 빈 화면의 배경색 — 다크 모드 등 서비스 테마와 통일용 (loading 미지정 시에만 사용) */
+  loadingBackground?: string
   /**
    * 개발자 통과(dev bypass) 설정.
    * - 생략/true: 기본 활성(기본 키), false: 비활성, { storageKey }: 키 커스텀
@@ -81,6 +83,7 @@ export function MaintenanceProvider({
   fetchOptions,
   fallback,
   loading,
+  loadingBackground,
   bypass,
   children,
 }: MaintenanceProviderProps) {
@@ -116,10 +119,23 @@ export function MaintenanceProvider({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [url])
 
+  const loadingFallback =
+    loading ??
+    (loadingBackground !== undefined ? (
+      <div
+        aria-hidden="true"
+        style={{
+          minHeight: '100vh',
+          width: '100%',
+          backgroundColor: loadingBackground,
+        }}
+      />
+    ) : null)
+
   return (
     <MaintenanceContext.Provider value={value}>
       {value.status === 'loading'
-        ? (loading ?? null)
+        ? loadingFallback
         : value.status === 'maintenance' && !value.bypassed
           ? (fallback ?? <DefaultMaintenanceScreen info={value.info} />)
           : children}
