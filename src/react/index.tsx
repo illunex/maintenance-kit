@@ -9,13 +9,27 @@ import {
 } from 'react'
 import {
   checkMaintenance,
+  isBypassActiveValue,
+  resolveBypassStorageKey,
   type CheckMaintenanceOptions,
+  type MaintenanceBypassOption,
   type MaintenanceInfo,
 } from '../core'
 import { DefaultMaintenanceScreen } from './default-screen'
 
-export type { CheckMaintenanceOptions, MaintenanceInfo } from '../core'
-export { checkMaintenance, isMaintenanceInfo, formatMaintenancePeriod } from '../core'
+export type {
+  CheckMaintenanceOptions,
+  MaintenanceBypassOption,
+  MaintenanceInfo,
+} from '../core'
+export {
+  checkMaintenance,
+  isMaintenanceInfo,
+  formatMaintenancePeriod,
+  DEFAULT_BYPASS_KEY,
+  isBypassActiveValue,
+  resolveBypassStorageKey,
+} from '../core'
 export { DefaultMaintenanceScreen } from './default-screen'
 
 export type MaintenanceStatus = 'loading' | 'up' | 'maintenance' | 'error'
@@ -23,18 +37,37 @@ export type MaintenanceStatus = 'loading' | 'up' | 'maintenance' | 'error'
 export interface MaintenanceContextValue {
   status: MaintenanceStatus
   info: MaintenanceInfo | null
+  /** dev bypass 플래그로 점검 화면을 통과 중인지 여부 */
+  bypassed: boolean
 }
 
 export interface MaintenanceProviderProps extends CheckMaintenanceOptions {
   children: ReactNode
   /** 점검 중일 때 children 대신 렌더링할 화면 (미지정 시 기본 화면) */
   fallback?: ReactNode
+  /**
+   * 개발자 통과(dev bypass) 설정.
+   * - 생략/true: 기본 활성(기본 키), false: 비활성, { storageKey }: 키 커스텀
+   */
+  bypass?: MaintenanceBypassOption
 }
 
 const MaintenanceContext = createContext<MaintenanceContextValue>({
   status: 'loading',
   info: null,
+  bypassed: false,
 })
+
+/** 브라우저에서만 localStorage를 읽어 bypass 활성 여부를 판정한다 (SSR/저장소 오류 시 false) */
+function readBypassActive(storageKey: string | null): boolean {
+  if (storageKey === null || typeof window === 'undefined') return false
+  try {
+    return isBypassActiveValue(window.localStorage.getItem(storageKey))
+  } catch {
+    // 프라이버시 모드 등 저장소 접근 불가 시 통과 아님으로 처리
+    return false
+  }
+}
 
 export function useMaintenance(): MaintenanceContextValue {
   return useContext(MaintenanceContext)
@@ -45,25 +78,33 @@ export function MaintenanceProvider({
   cacheBuster,
   fetchOptions,
   fallback,
+  bypass,
   children,
 }: MaintenanceProviderProps) {
   const [value, setValue] = useState<MaintenanceContextValue>({
     status: 'loading',
     info: null,
+    bypassed: false,
   })
 
   useEffect(() => {
     let cancelled = false
+    // 렌더 중 localStorage 접근을 피하기 위해 effect에서 1회만 판정한다
+    const bypassed = readBypassActive(resolveBypassStorageKey(bypass))
     checkMaintenance({ url, cacheBuster, fetchOptions })
       .then((info) => {
         if (!cancelled) {
-          setValue({ status: info.isMaintenance ? 'maintenance' : 'up', info })
+          setValue({
+            status: info.isMaintenance ? 'maintenance' : 'up',
+            info,
+            bypassed,
+          })
         }
       })
       .catch(() => {
         // 상태 확인 실패 시에는 서비스를 막지 않는다 (fail-open)
         if (!cancelled) {
-          setValue({ status: 'error', info: null })
+          setValue({ status: 'error', info: null, bypassed })
         }
       })
     return () => {
@@ -74,7 +115,7 @@ export function MaintenanceProvider({
 
   return (
     <MaintenanceContext.Provider value={value}>
-      {value.status === 'maintenance'
+      {value.status === 'maintenance' && !value.bypassed
         ? (fallback ?? <DefaultMaintenanceScreen info={value.info} />)
         : children}
     </MaintenanceContext.Provider>

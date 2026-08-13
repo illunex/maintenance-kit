@@ -9,11 +9,15 @@ export {
   checkMaintenance,
   isMaintenanceInfo,
   formatMaintenancePeriod,
+  DEFAULT_BYPASS_KEY,
+  isBypassActiveValue,
+  resolveBypassStorageKey,
 } from '../react'
 export type {
   MaintenanceProviderProps,
   MaintenanceContextValue,
   MaintenanceStatus,
   CheckMaintenanceOptions,
+  MaintenanceBypassOption,
   MaintenanceInfo,
 } from '../react'
