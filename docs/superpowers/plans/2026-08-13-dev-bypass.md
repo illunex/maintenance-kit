@@ -159,9 +159,12 @@ git commit -m "feat: dev bypass 판정 로직 추가" # + 트레일러
 
 - [ ] **Step 1: 테스트 의존성 설치**
 
-Run: `pnpm add -D jsdom @testing-library/react @testing-library/dom`
+Run: `pnpm add -D jsdom@26 @testing-library/react @testing-library/dom`
 
 (`@testing-library/dom`은 v16부터 `@testing-library/react`의 peer dependency라 명시 설치 필요)
+
+> 실행 기록: jsdom 30은 의존하는 undici 8이 Node 20에서
+> `webidl.util.markAsUncloneable is not a function` 에러를 내므로 jsdom 26으로 고정했다.
 
 - [ ] **Step 2: 실패하는 테스트 작성** — `src/react/index.test.tsx`
 
