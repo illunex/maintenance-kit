@@ -124,9 +124,13 @@ export function MaintenanceProvider({
     (loadingBackground !== undefined ? (
       <div
         aria-hidden="true"
+        // body 기본 마진·부모 레이아웃과 무관하게 뷰포트 전체를 덮는 오버레이
         style={{
-          minHeight: '100vh',
-          width: '100%',
+          position: 'fixed',
+          top: 0,
+          right: 0,
+          bottom: 0,
+          left: 0,
           backgroundColor: loadingBackground,
         }}
       />

@@ -125,5 +125,5 @@ document.cookie = 'maintenance-kit-bypass=; path=/; max-age=0'
 다크 모드 서비스에서 로딩 중 기본 빈 화면(흰색)이 테마를 깨는 문제 해결.
 
 - `MaintenanceProviderProps.loadingBackground?: string` (CSS 색상) 추가.
-- 로딩 중 렌더 우선순위: `loading` > `loadingBackground`(해당 배경색의 `minHeight: 100vh` 전체 화면 div, `aria-hidden`) > `null`.
+- 로딩 중 렌더 우선순위: `loading` > `loadingBackground`(해당 배경색의 `position: fixed` 전체 뷰포트 오버레이, `aria-hidden`) > `null`. body 기본 마진이 있어도 전체를 덮도록 fixed 사용 (v0.2.2에서 수정).
 - SSR 게이트는 로딩 상태가 없으므로 해당 없음. v0.2.1로 배포 (v0.2.0은 이 기능 머지 전에 배포됨).

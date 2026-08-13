@@ -59,6 +59,12 @@ describe('MaintenanceProvider 로딩 차단', () => {
     )
     const blank = container.firstElementChild as HTMLElement
     expect(blank.style.backgroundColor).toBe('rgb(10, 10, 10)')
+    // body 기본 마진과 무관하게 뷰포트 전체를 덮어야 한다
+    expect(blank.style.position).toBe('fixed')
+    expect(blank.style.top).toBe('0px')
+    expect(blank.style.right).toBe('0px')
+    expect(blank.style.bottom).toBe('0px')
+    expect(blank.style.left).toBe('0px')
     expect(screen.queryByText('실제 앱')).toBeNull()
   })
 
