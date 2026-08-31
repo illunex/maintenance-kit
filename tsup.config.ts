@@ -30,4 +30,25 @@ export default defineConfig([
     ...shared,
     entry: { 'next-server': 'src/next-server/index.tsx' },
   },
+  // 에러 로거 코어 — react 비의존이라 vanilla JS에서도 쓸 수 있다
+  {
+    ...shared,
+    entry: { logger: 'src/logger/index.ts' },
+  },
+  {
+    ...shared,
+    entry: { 'logger-react': 'src/logger-react/index.tsx' },
+    banner: { js: "'use client';" },
+  },
+  // 빌드 플러그인 — 번들러에서만 도는 Node 코드다
+  {
+    ...shared,
+    entry: { vite: 'src/vite/index.ts' },
+    platform: 'node',
+  },
+  {
+    ...shared,
+    entry: { 'next-config': 'src/next-config/index.ts' },
+    platform: 'node',
+  },
 ])
