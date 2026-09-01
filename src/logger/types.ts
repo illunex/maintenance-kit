@@ -79,7 +79,11 @@ export interface ErrorLoggerLimits {
 }
 
 export interface ErrorLoggerConfig {
-  /** 수집 엔드포인트. 생략 시 빌드 플러그인이 주입한 값 → 기본 엔드포인트 순으로 결정 */
+  /**
+   * 수집 엔드포인트. 생략하면 빌드 플러그인이 주입한 값을 쓰고,
+   * 그것도 없으면 개발용 console transport로 동작한다.
+   * 공개 저장소이므로 이 패키지에 기본 주소를 두지 않는다 — 주소는 앱 빌드 설정에서 넘긴다.
+   */
   endpoint?: string
   /** 제품/리포 식별자. 생략 시 빌드 플러그인이 주입한 값 */
   service?: string
