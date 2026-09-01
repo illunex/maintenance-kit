@@ -199,8 +199,8 @@ React 없이 쓰려면 `@illunex-front/maintenance-kit/logger`의 `initErrorLogg
 | 배치 / 플러시 | 20건 / 5초 (이탈 시 즉시) |
 | 요청 1회 최대 | 256KB (초과 시 분할) |
 | 세션당 상한 | 이벤트 50건 / 요청 3회 |
-| 중복 억제 | 동일 `fingerprint` 5건까지, 이후 `count`만 증가 |
-| 재시도 | 최대 3회, 1s / 4s / 16s (`429`는 `Retry-After` 준수, `4xx`는 재시도 안 함) |
+| 중복 억제 | 동일 `fingerprint` 5건까지 본문 전송, 이후 발생분은 횟수만 누적해 다음 전송에 `count`로 합산 |
+| 재시도 | 최대 1회, 2초 + 지터 (`429`는 `Retry-After` 준수, `4xx`는 재시도 안 함) |
 
 `sendBeacon`을 우선 사용하고 실패 시 `fetch keepalive`로 폴백합니다. preflight를
 피하려고 `Content-Type: text/plain;charset=UTF-8`로 보내므로 **서버가 이 타입을

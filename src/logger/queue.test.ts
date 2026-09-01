@@ -103,6 +103,20 @@ describe('ErrorLogQueue', () => {
     await vi.waitFor(() => expect(payloads).toHaveLength(2))
   })
 
+  it('5xx가 이어져도 기본값으로 한 번만 다시 보낸다', async () => {
+    const { transport, payloads } = recorder([
+      { ok: false, retryable: true },
+      { ok: false, retryable: true },
+      { ok: false, retryable: true },
+    ])
+    // 대기만 0으로 두고 재시도 횟수는 기본값(1회)을 그대로 검증한다
+    const queue = makeQueue(transport, { batchSize: 1, retryBackoffMs: [0] })
+    queue.add(error('a'))
+    await vi.waitFor(() => expect(payloads).toHaveLength(2))
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(payloads).toHaveLength(2)
+  })
+
   it('4xx처럼 재시도 불가한 실패는 다시 보내지 않는다', async () => {
     const { transport, payloads } = recorder([{ ok: false, retryable: false }])
     const queue = makeQueue(transport, { batchSize: 1 })
@@ -150,6 +164,48 @@ describe('ErrorLogQueue', () => {
     expect(payloads).toHaveLength(0)
     queue.flushSync()
     expect(payloads).toHaveLength(1)
+  })
+
+  it('억제된 횟수를 대기 중인 같은 지문 이벤트에 합산한다', async () => {
+    const { transport, payloads } = recorder()
+    const queue = makeQueue(transport, { maxPerFingerprint: 2, batchSize: 100 })
+    const make = () => buildEvent({ error: new Error('같은 에러') })
+    queue.add(make())
+    queue.add(make())
+    queue.add(make())
+    queue.add(make())
+    await queue.flush()
+    expect(payloads[0]?.events).toHaveLength(2)
+    const total = payloads[0]?.events.reduce((sum, event) => sum + event.count, 0)
+    expect(total).toBe(4)
+  })
+
+  it('이미 전송된 지문의 억제 횟수도 다음 전송에 집계로 실어 보낸다', async () => {
+    const { transport, payloads } = recorder()
+    const queue = makeQueue(transport, {
+      maxPerFingerprint: 1,
+      batchSize: 1,
+      maxRequestsPerSession: 5,
+    })
+    const make = () => buildEvent({ error: new Error('반복 에러') })
+    queue.add(make())
+    await vi.waitFor(() => expect(payloads).toHaveLength(1))
+    // 자동 전송이 끝나야 다음 flush가 겹치지 않는다
+    await new Promise((resolve) => setTimeout(resolve, 5))
+    expect(queue.size).toBe(0)
+
+    queue.add(make())
+    queue.add(make())
+    queue.add(make())
+    await queue.flush()
+
+    expect(payloads).toHaveLength(2)
+    const first = payloads[0]?.events[0]
+    const aggregated = payloads[1]?.events[0]
+    expect(aggregated?.count).toBe(3)
+    expect(aggregated?.fingerprint).toBe(first?.fingerprint)
+    // 서버가 중복으로 지우지 않도록 집계 건은 새 id를 가진다
+    expect(aggregated?.id).not.toBe(first?.id)
   })
 
   it('빈 큐에서는 아무것도 보내지 않는다', async () => {
