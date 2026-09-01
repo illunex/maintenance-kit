@@ -1,4 +1,4 @@
-import { captureError, flushErrorLogs } from '../logger'
+import { captureError, flushErrorLogs, stripQuery } from '../logger'
 import type { ErrorLogType } from '../logger'
 
 /** 배포 후 stale chunk — 실제 프론트 에러 중 가장 흔하다 */
@@ -33,7 +33,10 @@ export function installGlobalHandlers(): () => void {
     // target이 window가 아니면 <img>·<script> 같은 리소스 로드 실패다
     const target = event.target
     if (target !== window && target instanceof Element) {
-      const src = target.getAttribute('src') ?? target.getAttribute('href') ?? ''
+      // src 쿼리스트링에 토큰·개인정보가 붙어 오는 경우가 있어 메시지에 담기 전에 자른다
+      const src = stripQuery(
+        target.getAttribute('src') ?? target.getAttribute('href') ?? '',
+      )
       captureError({
         error: `리소스 로드 실패: ${target.tagName.toLowerCase()} ${src}`,
         type: 'resource',

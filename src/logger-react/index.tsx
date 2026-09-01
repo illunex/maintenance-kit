@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, type ReactNode } from 'react'
-import { initErrorLogger, resetErrorLogger } from '../logger'
+import { flushErrorLogs, initErrorLogger, resetErrorLogger } from '../logger'
 import type { ErrorLoggerConfig } from '../logger'
 import { installGlobalHandlers } from './handlers'
 
@@ -45,6 +45,8 @@ export function ErrorLogProvider({
     const uninstall = installGlobalHandlers()
     return () => {
       uninstall()
+      // reset은 큐를 통째로 버리므로 남은 이벤트를 먼저 내보낸다
+      flushErrorLogs()
       resetErrorLogger()
     }
     // 설정은 마운트 시점 1회만 반영한다 (재초기화는 큐를 버리게 된다)
