@@ -18,10 +18,10 @@ export type {
   TransportResult,
 } from '../logger'
 export {
-  beaconTransport,
   captureError,
   consoleTransport,
   flushErrorLogs,
+  httpTransport,
   initErrorLogger,
 } from '../logger'
 export { ErrorLogBoundary } from './error-boundary'

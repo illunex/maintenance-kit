@@ -3,8 +3,9 @@ import { buildEvent } from './event'
 import { resolveLimits } from './limits'
 import { ErrorLogQueue } from './queue'
 import { resolveSessionId } from './session'
-import { beaconTransport, consoleTransport } from './transport'
+import { consoleTransport, httpTransport } from './transport'
 import type { CaptureInput, ErrorLogEvent, ErrorLoggerConfig } from './types'
+import { warn } from './warn'
 
 export type {
   CaptureInput,
@@ -19,12 +20,10 @@ export type {
   TransportResult,
 } from './types'
 export { DEFAULT_LIMITS, FIELD_LIMITS, SCHEMA_VERSION } from './limits'
-export { beaconTransport, consoleTransport } from './transport'
+export { consoleTransport, httpTransport } from './transport'
 export { createFingerprint } from './fingerprint'
 export { sanitizeContext, scrub, stripQuery, truncate } from './mask'
 export { buildEvent } from './event'
-
-const PREFIX = '@illunex-front/maintenance-kit:logger'
 
 /**
  * 초기화 전에 잡힌 이벤트를 잠시 담아두는 버퍼.
@@ -36,10 +35,18 @@ let preInit: ErrorLogEvent[] = []
 
 let queue: ErrorLogQueue | null = null
 
-function warn(message: string): void {
-  // 값이 비었을 때 조용히 비활성되면 발견이 늦는다 — 반드시 남긴다
-  // eslint-disable-next-line no-console
-  console.warn(`${PREFIX}: ${message}`)
+/**
+ * 0~1 밖의 값은 되돌린다.
+ * 음수가 들어오면 Math.random()이 항상 그 이상이라 전량 드롭되는데,
+ * 조용히 그렇게 되면 수집이 멈춘 걸 알아챌 방법이 없다.
+ */
+function resolveSampleRate(raw: number | undefined): number {
+  if (raw === undefined) return 1
+  if (typeof raw !== 'number' || !Number.isFinite(raw) || raw < 0 || raw > 1) {
+    warn(`sampleRate=${String(raw)}는 0~1 범위가 아니어서 1(전량 전송)로 되돌립니다.`)
+    return 1
+  }
+  return raw
 }
 
 /**
@@ -73,7 +80,7 @@ export function initErrorLogger(config: ErrorLoggerConfig = {}): boolean {
     (endpoint === undefined || endpoint === ''
       ? (warn('endpoint가 없어 개발용 console transport로 동작합니다.'),
         consoleTransport())
-      : beaconTransport(endpoint))
+      : httpTransport(endpoint))
 
   queue = new ErrorLogQueue({
     service,
@@ -83,7 +90,7 @@ export function initErrorLogger(config: ErrorLoggerConfig = {}): boolean {
     transport,
     limits: resolveLimits(config.limits),
   })
-  sampleRate = config.sampleRate ?? 1
+  sampleRate = resolveSampleRate(config.sampleRate)
 
   // 초기화 전에 쌓인 이벤트를 큐로 옮긴다
   const buffered = preInit
