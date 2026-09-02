@@ -76,7 +76,7 @@ export class ErrorLogQueue {
     this.pending.push(fitted)
 
     if (this.pending.length >= limits.batchSize) {
-      void this.flush()
+      this.flushInBackground()
       return
     }
     this.scheduleFlush()
@@ -86,7 +86,7 @@ export class ErrorLogQueue {
     if (this.timer !== null) return
     this.timer = setTimeout(() => {
       this.timer = null
-      void this.flush()
+      this.flushInBackground()
     }, this.options.limits.flushIntervalMs)
   }
 
@@ -124,15 +124,20 @@ export class ErrorLogQueue {
     this.suppressedCounts.clear()
   }
 
-  /** 요청 크기 상한에 맞춰 앞에서부터 담을 수 있는 만큼만 꺼낸다 */
+  /**
+   * 요청 크기 상한에 맞춰 앞에서부터 담을 수 있는 만큼만 꺼낸다.
+   * 상한은 브라우저의 전송 상한(64KB)에서 온 값이라 봉투와 구분자까지 세야
+   * 실제 본문 크기와 어긋나지 않는다.
+   */
   private takeBatch(): ErrorLogEvent[] {
     const { limits } = this.options
     const batch: ErrorLogEvent[] = []
-    let size = 0
+    let size = JSON.stringify(this.buildPayload([])).length
     while (this.pending.length > 0 && batch.length < limits.batchSize) {
       const next = this.pending[0]
       if (next === undefined) break
-      const nextSize = JSON.stringify(next).length
+      // 두 번째 이벤트부터는 구분자 콤마 1바이트가 더 붙는다
+      const nextSize = JSON.stringify(next).length + (batch.length > 0 ? 1 : 0)
       if (batch.length > 0 && size + nextSize > limits.maxRequestBytes) break
       this.pending.shift()
       batch.push(next)
@@ -155,6 +160,10 @@ export class ErrorLogQueue {
   /**
    * 전송 호출 구간에만 가드를 건다.
    * 백오프 대기까지 막으면 그 사이 앱에서 난 에러를 통째로 잃는다.
+   *
+   * 커스텀 transport가 던지면 결과로 바꿔 삼킨다. 밖으로 새면
+   * unhandledrejection 핸들러가 그 에러를 다시 수집하는데, 그때는 이미
+   * sending 가드가 풀린 뒤라 로거가 자기 에러로 요청 예산을 태운다.
    */
   private async sendOnce(
     payload: ErrorLogPayload,
@@ -163,9 +172,16 @@ export class ErrorLogQueue {
     this.sending = true
     try {
       return await this.options.transport.send(payload, body)
+    } catch {
+      return { ok: false, retryable: true }
     } finally {
       this.sending = false
     }
+  }
+
+  /** 타이머·배치 상한에서 부르는 전송 — 어떤 경우에도 reject하지 않는다 */
+  private flushInBackground(): void {
+    void this.flush().catch(() => undefined)
   }
 
   private wait(ms: number): Promise<void> {
@@ -208,7 +224,11 @@ export class ErrorLogQueue {
     }
   }
 
-  /** 페이지 이탈 시점 — 타이머를 기다리지 않고 즉시 보낸다 */
+  /**
+   * 페이지 이탈 시점 — 타이머를 기다리지 않고 즉시 보낸다.
+   * 이탈 중에는 응답을 기다릴 수 없으므로 beacon 경로를 쓰고,
+   * 브라우저가 받아주지 않을 때만 fetch로 폴백한다.
+   */
   flushSync(): void {
     this.clearTimer()
     this.drainSuppressed()
@@ -219,7 +239,15 @@ export class ErrorLogQueue {
     if (batch.length === 0) return
     this.sessionRequestCount += 1
     const payload = this.buildPayload(batch)
-    void transport.send(payload, JSON.stringify(payload))
+    const body = JSON.stringify(payload)
+    let queued = false
+    try {
+      queued = transport.sendSync?.(payload, body) ?? false
+    } catch {
+      queued = false
+    }
+    if (queued) return
+    void transport.send(payload, body).catch(() => undefined)
   }
 
   /** 테스트용 — 내부 상태 확인 */

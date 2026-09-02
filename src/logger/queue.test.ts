@@ -144,12 +144,12 @@ describe('ErrorLogQueue', () => {
     const { transport, payloads } = recorder()
     const queue = makeQueue(transport, {
       batchSize: 10,
-      maxRequestBytes: 400,
+      maxRequestBytes: 1024,
       maxPerFingerprint: 100,
       maxRequestsPerSession: 10,
     })
     for (let index = 0; index < 4; index += 1) {
-      queue.add(error(`에러 ${index} ${'x'.repeat(150)}`))
+      queue.add(error(`에러 ${index} ${'x'.repeat(400)}`))
     }
     await queue.flush()
     expect(payloads).toHaveLength(1)
@@ -164,6 +164,66 @@ describe('ErrorLogQueue', () => {
     expect(payloads).toHaveLength(0)
     queue.flushSync()
     expect(payloads).toHaveLength(1)
+  })
+
+  it('flushSync는 이탈 전용 경로(sendSync)를 먼저 쓴다', () => {
+    const { transport, payloads } = recorder()
+    const sendSync = vi.fn(() => true)
+    const queue = makeQueue({ ...transport, sendSync }, { batchSize: 100 })
+    queue.add(error('a'))
+    queue.flushSync()
+    expect(sendSync).toHaveBeenCalledTimes(1)
+    // beacon이 받아줬으면 fetch로 두 번 보내지 않는다
+    expect(payloads).toHaveLength(0)
+  })
+
+  it('sendSync가 받아주지 않으면 send로 폴백한다', () => {
+    const { transport, payloads } = recorder()
+    const queue = makeQueue(
+      { ...transport, sendSync: () => false },
+      { batchSize: 100 },
+    )
+    queue.add(error('a'))
+    queue.flushSync()
+    expect(payloads).toHaveLength(1)
+  })
+
+  it('평시 전송은 sendSync를 쓰지 않는다', async () => {
+    // beacon으로 보내면 429·5xx를 볼 수 없어 재시도 정책이 통째로 죽는다
+    const { transport, payloads } = recorder()
+    const sendSync = vi.fn(() => true)
+    const queue = makeQueue({ ...transport, sendSync }, { batchSize: 1 })
+    queue.add(error('a'))
+    await vi.waitFor(() => expect(payloads).toHaveLength(1))
+    expect(sendSync).not.toHaveBeenCalled()
+  })
+
+  it('transport가 던져도 큐 밖으로 새지 않는다', async () => {
+    // 밖으로 새면 unhandledrejection 핸들러가 로거 자신의 에러를 다시 수집한다
+    let calls = 0
+    const transport: Transport = {
+      send() {
+        calls += 1
+        return Promise.reject(new Error('transport 폭발'))
+      },
+    }
+    const queue = makeQueue(transport, { batchSize: 100, retryBackoffMs: [0] })
+    queue.add(error('a'))
+    await expect(queue.flush()).resolves.toBeUndefined()
+    // 던진 것도 재시도 가능한 실패로 취급한다 (기본 1회 재시도)
+    expect(calls).toBe(2)
+  })
+
+  it('flushSync에서 transport가 던져도 예외가 새지 않는다', () => {
+    const transport: Transport = {
+      send: () => Promise.reject(new Error('transport 폭발')),
+      sendSync: () => {
+        throw new Error('beacon 폭발')
+      },
+    }
+    const queue = makeQueue(transport, { batchSize: 100 })
+    queue.add(error('a'))
+    expect(() => queue.flushSync()).not.toThrow()
   })
 
   it('억제된 횟수를 대기 중인 같은 지문 이벤트에 합산한다', async () => {

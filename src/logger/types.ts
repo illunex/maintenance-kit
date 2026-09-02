@@ -64,6 +64,12 @@ export interface TransportResult {
  */
 export interface Transport {
   send(payload: ErrorLogPayload, body: string): Promise<TransportResult>
+  /**
+   * 페이지 이탈 시점 전송 (sendBeacon 등).
+   * 응답을 볼 수 없으므로 "전송을 넘겼는지"만 돌려준다.
+   * 없거나 false를 돌려주면 큐가 send()로 폴백한다.
+   */
+  sendSync?(payload: ErrorLogPayload, body: string): boolean
 }
 
 /** 큐·재시도·상한 값 (기본값은 limits.ts) */

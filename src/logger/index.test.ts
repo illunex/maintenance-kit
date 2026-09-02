@@ -29,6 +29,17 @@ afterEach(() => {
 })
 
 describe('initErrorLogger', () => {
+  it('0~1 밖의 sampleRate는 전량 전송으로 되돌린다', () => {
+    // 음수면 Math.random()이 항상 그 이상이라 아무것도 안 보내진다
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const { transport, payloads } = recorder()
+    initErrorLogger({ ...base, transport, sampleRate: -1 })
+    captureError({ error: new Error('a') })
+    flushErrorLogs()
+    expect(payloads).toHaveLength(1)
+    expect(warn).toHaveBeenCalled()
+  })
+
   it('service·env가 있으면 시작한다', () => {
     const { transport } = recorder()
     expect(initErrorLogger({ ...base, transport })).toBe(true)
