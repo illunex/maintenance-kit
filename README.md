@@ -156,8 +156,15 @@ module.exports = withErrorLogger(nextConfig)
 브랜치는 `main`→`production`, `dev`→`development`, `release/*`→`staging`으로 매핑되고
 그 외에는 브랜치명이 그대로 남습니다(`resolveEnv` 옵션으로 변경 가능).
 
-플러그인은 `build.sourcemap: 'hidden'`도 함께 켭니다. `.map`은 만들되 번들에
-`sourceMappingURL` 주석을 남기지 않으므로, **CI에서 비공개 저장소로 옮기고 배포
+소스맵은 번들러에 따라 기본값이 다릅니다.
+
+| 번들러 | 기본값 | 이유 |
+| --- | --- | --- |
+| Vite (`errorLoggerEnv`) | `build.sourcemap: 'hidden'` (켬) | `.map`은 만들되 번들에 `sourceMappingURL` 주석을 남기지 않아, 산출물만 배포하면 공개되지 않습니다 |
+| Next (`withErrorLogger`) | 끔 | Next에는 `hidden`이 없어 켜면 `sourceMappingURL`까지 붙어 **`.map`이 그대로 공개**됩니다 |
+
+Next에서 소스맵이 필요하면 아래 CI 절차를 먼저 갖춘 뒤 `withErrorLogger(config, { sourcemap: true })`로
+명시해서 켜세요. Vite도 마찬가지로, **CI에서 `.map`을 비공개 저장소로 옮기고 배포
 산출물에서 지워야** 소스맵 보안이 완성됩니다.
 
 ```yaml
@@ -197,14 +204,21 @@ React 없이 쓰려면 `@illunex-front/maintenance-kit/logger`의 `initErrorLogg
 | 항목 | 값 |
 | --- | --- |
 | 배치 / 플러시 | 20건 / 5초 (이탈 시 즉시) |
-| 요청 1회 최대 | 256KB (초과 시 분할) |
+| 요청 1회 최대 | 48KB (초과 시 분할, 하드 상한 64KB) |
 | 세션당 상한 | 이벤트 50건 / 요청 3회 |
 | 중복 억제 | 동일 `fingerprint` 5건까지 본문 전송, 이후 발생분은 횟수만 누적해 다음 전송에 `count`로 합산 |
 | 재시도 | 최대 1회, 2초 + 지터 (`429`는 `Retry-After` 준수, `4xx`는 재시도 안 함) |
 
-`sendBeacon`을 우선 사용하고 실패 시 `fetch keepalive`로 폴백합니다. preflight를
-피하려고 `Content-Type: text/plain;charset=UTF-8`로 보내므로 **서버가 이 타입을
-허용해야** 합니다.
+평시에는 `fetch keepalive`로 보내고, 페이지 이탈 시점(`pagehide`·`visibilitychange`)에만
+`sendBeacon`을 씁니다. beacon은 응답을 볼 수 없어 "브라우저 큐에 넣었다"까지만 알 수
+있으므로, 평시 전송까지 beacon으로 보내면 위 재시도·`Retry-After` 정책이 통째로 죽습니다.
+요청 크기 상한(48KB)도 beacon 할당량과 keepalive 본문 상한(각 64KB)에서 온 값입니다.
+
+preflight를 피하려고 `Content-Type: text/plain;charset=UTF-8`로 보내므로 **서버가 이
+타입을 허용해야** 합니다.
+
+`limits`로 넘긴 값은 범위를 벗어나면 조정하고 경고를 남깁니다(`batchSize: 0`처럼
+큐가 영영 비워지지 않는 값이 조용히 먹히지 않도록).
 
 `endpoint`가 없으면 개발용 `consoleTransport`로 동작하고 콘솔에 경고를 남깁니다.
 `service`·`env`를 확인할 수 없으면 수집을 시작하지 않고 역시 경고를 남깁니다 —
@@ -213,8 +227,15 @@ React 없이 쓰려면 `@illunex-front/maintenance-kit/logger`의 `initErrorLogg
 ### 개인정보 처리
 
 전송 필드는 고정되어 있고, 값에서 이메일·전화번호·주민등록번호·카드번호·JWT·Bearer
-토큰을 치환합니다. `url`은 쿼리스트링을 제거해서 보내며, `context`는 `route`·`component`
-두 키만 통과시킵니다. `sessionId`는 방문(탭) 단위 무작위 값으로 `sessionStorage`에만
+토큰을 치환합니다. `url`은 쿼리스트링을 제거한 뒤 path까지 같은 치환을 거치며
+(`/users/hong@example.com` → `/users/[email]`), `context`는 `route`·`component`
+두 키만 통과시킵니다.
+
+`Error`가 아닌 **객체가 throw되면 값이 아니라 형태만** 남깁니다
+(`Object 객체가 throw됨: status=500 (keys: status, body)`). 통째로 직렬화하면
+`{ password }`나 API 응답 body처럼 키에 의미가 있는 비밀값이 값 패턴 치환을 그대로
+통과하기 때문입니다. `name`·`message`·`code`·`status`만 값까지 싣고, 더 필요한 값은
+`context`로 명시해 올리세요. `sessionId`는 방문(탭) 단위 무작위 값으로 `sessionStorage`에만
 보관하며 계정과 연결되지 않습니다.
 
 ## API
@@ -230,7 +251,7 @@ React 없이 쓰려면 `@illunex-front/maintenance-kit/logger`의 `initErrorLogg
 - `initErrorLogger(config)` / `captureError({ error, type?, level?, context? })` / `flushErrorLogs()` (`/logger`)
 - `<ErrorLogProvider>` · `<ErrorLogBoundary>` · `installGlobalHandlers()` (`/logger/react`)
 - `errorLoggerEnv(options?)` (`/vite`) · `withErrorLogger(nextConfig, options?)` (`/next/config`)
-- `consoleTransport()` · `beaconTransport(endpoint)` — 전송 경로 교체용
+- `consoleTransport()` · `httpTransport(endpoint)` — 전송 경로 교체용
 
 ## License
 
