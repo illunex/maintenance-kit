@@ -1,27 +1,28 @@
 # TODO
 
-## 1. 라이선스 명의를 ILLUNEX로 변경
+## 1. Figma 모바일 시안과 점검 화면 수치 대조
 
-`LICENSE`의 저작권자가 개인 명의(`Copyright (c) 2026 ChangGyu Im`)로 되어 있다.
-npm에 public으로 배포되는 패키지라 이 값이 그대로 외부에 노출되므로,
-회사 자산으로 관리한다면 회사 명의로 바꿔야 한다.
+기본 점검 화면 반응형은 적용됐지만(`src/react/default-screen.tsx`), 축소 구간의
+수치는 Figma 시안이 아니라 임의로 잡은 값이다. 데스크톱 수치를 `clamp()`의
+상한으로 삼아 기존 화면은 그대로지만, 모바일 구간은 확인이 필요하다.
 
-- [ ] `LICENSE` 저작권자를 ILLUNEX로 변경
-- [ ] `package.json`의 `author`도 함께 정리할지 확인 (현재 개인 명의)
-- [ ] 변경 전 최초 작성자(임창규)와 합의
+- [ ] Figma 시안(`서비스일시중단 팝업 18702:2`)에 모바일 시안이 있는지 확인
+- [ ] 있으면 `clamp()` 하한값(제목 28px, 부제 16px, 카드 16px, 설명 15px)과
+      `illustration`의 `min(244px, 70%)`를 시안 수치로 교체
+- [ ] 실제 단말(360·390px 폭)에서 일정 카드 줄바꿈 확인
 
-## 2. 기본 점검 화면 모바일 반응형 적용
+## 2. esbuild override 제거
 
-`src/react/default-screen.tsx`는 스타일이 전부 인라인 `style` 객체라 미디어 쿼리를
-걸 수 없고, 반응형 처리가 `scheduleCard`의 `maxWidth: 100%` 하나뿐이다.
-데스크톱 고정값이 모바일에 그대로 내려가 화면이 답답해진다.
+`pnpm audit`의 esbuild 취약점(GHSA-g7r4-m6w7-qqqr)을 막으려고 `package.json`의
+`pnpm.overrides`로 esbuild를 `^0.28.1`로 올려둔 상태다. tsup 8.5.1이
+`esbuild: ^0.27.0`으로 범위를 잡고 있어 넣은 임시 조치다.
 
-미디어 쿼리 없이 `clamp()`만으로 대부분 해결된다.
+- [ ] tsup이 esbuild `^0.28` 이상을 지원하면 `pnpm.overrides` 제거
+- [ ] 제거 후 `pnpm audit`·`pnpm build` 재확인
 
-- [ ] 폰트 크기를 `clamp()`로 전환 (제목 48px, 부제 24px, 카드 20px, 설명 18px이 모두 고정)
-- [ ] `illustration` 고정 244px → `min(244px, 70%)`
-- [ ] `scheduleBody`의 `height: 79px` 고정 해제 → `minHeight` + 좌우 패딩 (현재 텍스트가 테두리에 붙음)
-- [ ] `minHeight: 100vh` → `100dvh` (iOS Safari 주소창 높이 문제)
-- [ ] 한국어 줄바꿈용 `wordBreak: 'keep-all'`, 안전장치로 `overflowWrap: 'anywhere'` 추가
-  (`<br />` 강제 개행과 자동 줄바꿈이 겹쳐 줄 길이가 들쭉날쭉함)
-- [ ] Figma 시안(`서비스일시중단 팝업 18702:2`)에 모바일 시안이 있는지 확인 후 수치 확정
+## 3. CI 잡을 required status check로 지정
+
+`.github/workflows/ci.yml`이 추가됐지만, 저장소 설정에서 required로 지정하지
+않으면 체크가 실패해도 머지를 막지 못한다. 저장소 관리자 권한이 필요하다.
+
+- [ ] Settings → Branches → `main` 브랜치 보호 규칙에 `verify` 잡 추가
