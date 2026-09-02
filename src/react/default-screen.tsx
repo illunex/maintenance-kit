@@ -16,7 +16,8 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: '100vh',
+    // 100vh는 iOS Safari에서 주소창 높이를 빼지 않아 화면이 잘린다
+    minHeight: '100dvh',
     width: '100%',
     boxSizing: 'border-box',
     padding: '48px 24px',
@@ -24,6 +25,10 @@ const styles = {
     color: '#000000',
     fontFamily: FONT_FAMILY,
     textAlign: 'center',
+    // 한국어는 어절 단위로 끊어야 읽힌다. keep-all만 두면 긴 URL·이메일이
+    // 컨테이너를 밀어내므로 anywhere를 안전장치로 함께 건다
+    wordBreak: 'keep-all',
+    overflowWrap: 'anywhere',
   },
   content: {
     display: 'flex',
@@ -38,26 +43,27 @@ const styles = {
   },
   subtitle: {
     margin: 0,
-    fontSize: '24px',
+    fontSize: 'clamp(16px, 4vw, 24px)',
     fontWeight: 400,
-    letterSpacing: '-0.72px',
+    letterSpacing: '-0.03em',
   },
   title: {
     margin: 0,
-    fontSize: '48px',
+    fontSize: 'clamp(28px, 7vw, 48px)',
     fontWeight: 700,
-    letterSpacing: '-1.44px',
+    letterSpacing: '-0.03em',
   },
   illustration: {
-    width: '244px',
-    height: '162px',
+    width: 'min(244px, 70%)',
+    // SVG가 컨테이너를 채우므로 비율은 여기서 고정한다
+    aspectRatio: '244 / 162',
   },
   description: {
     margin: 0,
-    fontSize: '18px',
+    fontSize: 'clamp(15px, 3.5vw, 18px)',
     fontWeight: 600,
     lineHeight: 1.5,
-    letterSpacing: '-0.54px',
+    letterSpacing: '-0.03em',
   },
   scheduleCard: {
     width: '399px',
@@ -73,17 +79,19 @@ const styles = {
   },
   scheduleHeaderText: {
     margin: 0,
-    fontSize: '20px',
+    fontSize: 'clamp(16px, 4vw, 20px)',
     fontWeight: 600,
     lineHeight: 1.5,
-    letterSpacing: '-0.6px',
+    letterSpacing: '-0.03em',
     color: '#ffffff',
   },
   scheduleBody: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    height: '79px',
+    // 고정 높이면 일정이 두 줄로 접힐 때 글자가 테두리를 넘는다
+    minHeight: '79px',
+    padding: '10px 16px',
     boxSizing: 'border-box',
     backgroundColor: '#ffffff',
     border: `1px solid ${POINT_COLOR}`,
@@ -91,17 +99,17 @@ const styles = {
   },
   scheduleBodyText: {
     margin: 0,
-    fontSize: '20px',
+    fontSize: 'clamp(16px, 4vw, 20px)',
     fontWeight: 600,
     lineHeight: 1.5,
-    letterSpacing: '-0.6px',
+    letterSpacing: '-0.03em',
   },
   apology: {
     margin: 0,
     fontSize: '15px',
     fontWeight: 400,
     lineHeight: 1.5,
-    letterSpacing: '-0.45px',
+    letterSpacing: '-0.03em',
   },
   email: {
     color: '#1e32b2',
@@ -111,7 +119,7 @@ const styles = {
     fontSize: '15px',
     fontWeight: 600,
     lineHeight: 1.5,
-    letterSpacing: '-0.45px',
+    letterSpacing: '-0.03em',
   },
 } satisfies Record<string, CSSProperties>
 
