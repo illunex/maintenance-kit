@@ -18,16 +18,21 @@ function classify(message: string, fallback: ErrorLogType): ErrorLogType {
 }
 
 /**
- * 코드·스타일을 싣는 rel만 청크로 본다.
- * <link>에는 favicon·manifest·apple-touch-icon도 들어오는데, 그것까지 청크로
- * 잡으면 아이콘 404가 "배포 후 stale chunk"로 집계된다.
+ * 코드·스타일을 싣는 <link>만 청크로 본다.
+ * <link>는 rel에 따라 싣는 것이 완전히 달라서, 구분하지 않으면 prefetch나
+ * 이미지·폰트 preload의 404가 "배포 후 stale chunk"로 집계된다.
+ * (icon·manifest는 Chrome에서 error 이벤트 자체가 뜨지 않아 여기 오지 않는다)
  */
-const CHUNK_LINK_RELS = new Set(['stylesheet', 'preload', 'modulepreload'])
+const CHUNK_LINK_RELS = new Set(['stylesheet', 'modulepreload'])
+/** preload는 as로 무엇을 싣는지 정해진다 — 코드·스타일일 때만 청크다 */
+const CHUNK_PRELOAD_AS = new Set(['script', 'style'])
 
 function linkCarriesCode(target: Element): boolean {
   // rel은 "preload stylesheet"처럼 공백으로 여러 값이 올 수 있다
-  const rel = target.getAttribute('rel')?.toLowerCase() ?? ''
-  return rel.split(/\s+/).some((value) => CHUNK_LINK_RELS.has(value))
+  const rels = (target.getAttribute('rel')?.toLowerCase() ?? '').split(/\s+/)
+  if (rels.some((value) => CHUNK_LINK_RELS.has(value))) return true
+  if (!rels.includes('preload')) return false
+  return CHUNK_PRELOAD_AS.has(target.getAttribute('as')?.toLowerCase() ?? '')
 }
 
 /**

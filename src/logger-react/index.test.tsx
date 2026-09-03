@@ -27,10 +27,14 @@ const eager = { limits: { batchSize: 1 } }
  * window의 캡처 리스너까지 이벤트가 올라가려면 엘리먼트가 문서에 붙어 있어야 하고,
  * 그래야 핸들러가 event.target으로 태그와 src를 읽을 수 있다.
  */
-function dispatchResourceError(tag: string, url: string, rel?: string): void {
+function dispatchResourceError(
+  tag: string,
+  url: string,
+  attrs: Record<string, string> = {},
+): void {
   const element = document.createElement(tag)
   element.setAttribute(tag === 'link' ? 'href' : 'src', url)
-  if (rel !== undefined) element.setAttribute('rel', rel)
+  Object.entries(attrs).forEach(([key, value]) => element.setAttribute(key, value))
   document.body.appendChild(element)
   element.dispatchEvent(new Event('error'))
   element.remove()
@@ -120,22 +124,10 @@ describe('ErrorLogProvider', () => {
     dispatchResourceError(
       'link',
       `${window.location.origin}/assets/index-abc.css`,
-      'stylesheet',
+      { rel: 'stylesheet' },
     )
     await waitFor(() => expect(payloads).toHaveLength(1))
     expect(payloads[0]?.events[0]?.type).toBe('chunkload')
-  })
-
-  it('같은 오리진이어도 favicon 실패는 resource로 둔다', async () => {
-    const { transport, payloads } = recorder()
-    render(
-      <ErrorLogProvider {...base} {...eager} transport={transport}>
-        <p>본문</p>
-      </ErrorLogProvider>,
-    )
-    dispatchResourceError('link', `${window.location.origin}/favicon.ico`, 'icon')
-    await waitFor(() => expect(payloads).toHaveLength(1))
-    expect(payloads[0]?.events[0]?.type).toBe('resource')
   })
 
   it('rel에 여러 값이 와도 stylesheet를 찾아낸다', async () => {
@@ -148,10 +140,58 @@ describe('ErrorLogProvider', () => {
     dispatchResourceError(
       'link',
       `${window.location.origin}/assets/index-abc.css`,
-      'preload stylesheet',
+      { rel: 'preload stylesheet' },
     )
     await waitFor(() => expect(payloads).toHaveLength(1))
     expect(payloads[0]?.events[0]?.type).toBe('chunkload')
+  })
+
+  it('modulepreload 실패를 chunkload로 분류한다', async () => {
+    const { transport, payloads } = recorder()
+    render(
+      <ErrorLogProvider {...base} {...eager} transport={transport}>
+        <p>본문</p>
+      </ErrorLogProvider>,
+    )
+    dispatchResourceError('link', `${window.location.origin}/assets/dep-abc.js`, {
+      rel: 'modulepreload',
+    })
+    await waitFor(() => expect(payloads).toHaveLength(1))
+    expect(payloads[0]?.events[0]?.type).toBe('chunkload')
+  })
+
+  it('preload는 as가 script·style일 때만 chunkload로 본다', async () => {
+    const { transport, payloads } = recorder()
+    render(
+      // 4건을 한 배치로 묶어 받는다. batchSize 1로 두면 첫 전송이 끝나기 전에
+      // 들어온 나머지가 flushIntervalMs 타이머로 밀려 한 요청에 안 담긴다.
+      <ErrorLogProvider {...base} transport={transport} limits={{ batchSize: 4 }}>
+        <p>본문</p>
+      </ErrorLogProvider>,
+    )
+    const origin = window.location.origin
+    dispatchResourceError('link', `${origin}/assets/index-abc.js`, {
+      rel: 'preload',
+      as: 'script',
+    })
+    // 이미지·폰트 preload는 실브라우저에서도 error 이벤트가 뜬다 — 청크가 아니다
+    dispatchResourceError('link', `${origin}/hero.png`, {
+      rel: 'preload',
+      as: 'image',
+    })
+    dispatchResourceError('link', `${origin}/pretendard.woff2`, {
+      rel: 'preload',
+      as: 'font',
+    })
+    // prefetch도 이벤트가 뜨지만 코드를 싣는다는 보장이 없다
+    dispatchResourceError('link', `${origin}/next-page.js`, { rel: 'prefetch' })
+    await waitFor(() => expect(payloads).toHaveLength(1))
+    expect(payloads[0]?.events.map((event) => event.type)).toEqual([
+      'chunkload',
+      'resource',
+      'resource',
+      'resource',
+    ])
   })
 
   it('이미지 로드 실패를 resource로 수집한다', async () => {
