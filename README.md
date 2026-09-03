@@ -183,8 +183,50 @@ import { ErrorLogProvider } from '@illunex-front/maintenance-kit/logger/react'
 </ErrorLogProvider>
 ```
 
+> `endpoint`는 **POST를 받는 수집 서버 주소**입니다. 점검 화면의
+> `maintenance.json`과는 다른 주소이니 섞이지 않게 주의하세요.
+
 전역 핸들러(`error`, `unhandledrejection`, 청크·리소스 로드 실패)가 걸리고,
 페이지 이탈 시점에 남은 이벤트를 flush 합니다.
+
+#### 리소스 로드 실패 걸러내기
+
+깨진 이미지가 많은 서비스에서는 이미지 404가 세션 전송 예산(요청 3회)을 먼저
+소진해 정작 봐야 할 에러를 놓칩니다. 그럴 때 리소스 수집을 끄거나 URL로 거릅니다.
+
+```tsx
+// 리소스 로드 실패를 아예 안 봄
+<ErrorLogProvider captureResource={false}>
+
+// 특정 버킷만 제외
+<ErrorLogProvider ignoreResource={[/\.s3\.[^/]+\.amazonaws\.com\//]}>
+```
+
+두 옵션의 적용 범위가 다릅니다.
+
+| 옵션 | 청크 로드 실패에도 적용되나 |
+| --- | --- |
+| `captureResource: false` | **아니오.** 어디를 끄는지 지정하지 않는 광범위한 스위치라, 청크까지 끌 의도는 아니라고 봅니다 |
+| `ignoreResource` | **예.** 호출자가 URL을 콕 집어 지정한 것이므로 그대로 따릅니다 |
+
+청크로 보는 범위는 **자기 오리진**의 다음 세 가지입니다. 나머지는 전부
+`resource`로 남습니다.
+
+| 대상 | 청크 |
+| --- | --- |
+| `<script src>` | ✅ |
+| `<link rel="stylesheet">`, `<link rel="modulepreload">` | ✅ |
+| `<link rel="preload" as="script">`, `as="style"` | ✅ |
+| `<link rel="preload">`의 `as="image"`·`as="font"` | ❌ 코드가 아님 |
+| `<link rel="prefetch">` | ❌ 코드를 싣는다는 보장이 없음 |
+| 다른 오리진의 `<script>` (애널리틱스·광고 등) | ❌ stale chunk가 아님 |
+| `<img>`, `<video>` 등 | ❌ |
+
+`rel="icon"`·`manifest`는 Chrome에서 error 이벤트 자체가 발생하지 않아
+어느 쪽으로도 수집되지 않습니다.
+
+> 이 props는 `ErrorLoggerConfig`와 마찬가지로 **마운트 시점에 한 번만**
+> 반영됩니다. 렌더 중에 값을 바꿔도 다시 적용되지 않습니다.
 
 렌더 에러를 화면 단위로 잡으려면 `ErrorLogBoundary`를 함께 씁니다.
 

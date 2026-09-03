@@ -4,6 +4,7 @@ import { useEffect, type ReactNode } from 'react'
 import { flushErrorLogs, initErrorLogger, resetErrorLogger } from '../logger'
 import type { ErrorLoggerConfig } from '../logger'
 import { installGlobalHandlers } from './handlers'
+import type { GlobalHandlerOptions } from './handlers'
 
 export type {
   CaptureInput,
@@ -26,8 +27,11 @@ export {
 } from '../logger'
 export { ErrorLogBoundary } from './error-boundary'
 export { installGlobalHandlers } from './handlers'
+export type { GlobalHandlerOptions } from './handlers'
 
-export interface ErrorLogProviderProps extends ErrorLoggerConfig {
+export interface ErrorLogProviderProps
+  extends ErrorLoggerConfig,
+    GlobalHandlerOptions {
   children: ReactNode
 }
 
@@ -37,12 +41,14 @@ export interface ErrorLogProviderProps extends ErrorLoggerConfig {
  */
 export function ErrorLogProvider({
   children,
+  captureResource,
+  ignoreResource,
   ...config
 }: ErrorLogProviderProps) {
   useEffect(() => {
     const started = initErrorLogger(config)
     if (!started) return
-    const uninstall = installGlobalHandlers()
+    const uninstall = installGlobalHandlers({ captureResource, ignoreResource })
     return () => {
       uninstall()
       // reset은 큐를 통째로 버리므로 남은 이벤트를 먼저 내보낸다
