@@ -183,8 +183,28 @@ import { ErrorLogProvider } from '@illunex-front/maintenance-kit/logger/react'
 </ErrorLogProvider>
 ```
 
+> `endpoint`는 **POST를 받는 수집 서버 주소**입니다. 점검 화면의
+> `maintenance.json`과는 다른 주소이니 섞이지 않게 주의하세요.
+
 전역 핸들러(`error`, `unhandledrejection`, 청크·리소스 로드 실패)가 걸리고,
 페이지 이탈 시점에 남은 이벤트를 flush 합니다.
+
+#### 리소스 로드 실패 걸러내기
+
+깨진 이미지가 많은 서비스에서는 이미지 404가 세션 전송 예산(요청 3회)을 먼저
+소진해 정작 봐야 할 에러를 놓칩니다. 그럴 때 리소스 수집을 끄거나 URL로 거릅니다.
+
+```tsx
+// 리소스 로드 실패를 아예 안 봄
+<ErrorLogProvider captureResource={false}>
+
+// 특정 버킷만 제외
+<ErrorLogProvider ignoreResource={[/\.s3\.[^/]+\.amazonaws\.com\//]}>
+```
+
+자기 오리진의 `<script>`·`<link>` 실패는 배포 후 stale chunk라 `chunkload`로
+분류되며, **위 설정과 무관하게 항상 수집합니다.** 서드파티 스크립트(애널리틱스
+등) 실패는 `resource`로 남아 걸러집니다.
 
 렌더 에러를 화면 단위로 잡으려면 `ErrorLogBoundary`를 함께 씁니다.
 
