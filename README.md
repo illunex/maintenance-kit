@@ -202,9 +202,19 @@ import { ErrorLogProvider } from '@illunex-front/maintenance-kit/logger/react'
 <ErrorLogProvider ignoreResource={[/\.s3\.[^/]+\.amazonaws\.com\//]}>
 ```
 
-자기 오리진의 `<script>`·`<link>` 실패는 배포 후 stale chunk라 `chunkload`로
-분류되며, **위 설정과 무관하게 항상 수집합니다.** 서드파티 스크립트(애널리틱스
-등) 실패는 `resource`로 남아 걸러집니다.
+두 옵션의 적용 범위가 다릅니다.
+
+| 옵션 | 청크 로드 실패에도 적용되나 |
+| --- | --- |
+| `captureResource: false` | **아니오.** 어디를 끄는지 지정하지 않는 광범위한 스위치라, 청크까지 끌 의도는 아니라고 봅니다 |
+| `ignoreResource` | **예.** 호출자가 URL을 콕 집어 지정한 것이므로 그대로 따릅니다 |
+
+여기서 청크로 보는 것은 **자기 오리진의 `<script>`, 그리고 `rel`이
+`stylesheet`·`preload`·`modulepreload`인 `<link>`** 입니다. 서드파티
+스크립트(애널리틱스 등)와 favicon·manifest는 `resource`로 남습니다.
+
+> 이 props는 `ErrorLoggerConfig`와 마찬가지로 **마운트 시점에 한 번만**
+> 반영됩니다. 렌더 중에 값을 바꿔도 다시 적용되지 않습니다.
 
 렌더 에러를 화면 단위로 잡으려면 `ErrorLogBoundary`를 함께 씁니다.
 

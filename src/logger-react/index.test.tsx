@@ -27,9 +27,10 @@ const eager = { limits: { batchSize: 1 } }
  * window의 캡처 리스너까지 이벤트가 올라가려면 엘리먼트가 문서에 붙어 있어야 하고,
  * 그래야 핸들러가 event.target으로 태그와 src를 읽을 수 있다.
  */
-function dispatchResourceError(tag: string, url: string): void {
+function dispatchResourceError(tag: string, url: string, rel?: string): void {
   const element = document.createElement(tag)
   element.setAttribute(tag === 'link' ? 'href' : 'src', url)
+  if (rel !== undefined) element.setAttribute('rel', rel)
   document.body.appendChild(element)
   element.dispatchEvent(new Event('error'))
   element.remove()
@@ -109,6 +110,50 @@ describe('ErrorLogProvider', () => {
     expect(payloads[0]?.events[0]?.type).toBe('resource')
   })
 
+  it('같은 오리진 stylesheet 실패를 chunkload로 분류한다', async () => {
+    const { transport, payloads } = recorder()
+    render(
+      <ErrorLogProvider {...base} {...eager} transport={transport}>
+        <p>본문</p>
+      </ErrorLogProvider>,
+    )
+    dispatchResourceError(
+      'link',
+      `${window.location.origin}/assets/index-abc.css`,
+      'stylesheet',
+    )
+    await waitFor(() => expect(payloads).toHaveLength(1))
+    expect(payloads[0]?.events[0]?.type).toBe('chunkload')
+  })
+
+  it('같은 오리진이어도 favicon 실패는 resource로 둔다', async () => {
+    const { transport, payloads } = recorder()
+    render(
+      <ErrorLogProvider {...base} {...eager} transport={transport}>
+        <p>본문</p>
+      </ErrorLogProvider>,
+    )
+    dispatchResourceError('link', `${window.location.origin}/favicon.ico`, 'icon')
+    await waitFor(() => expect(payloads).toHaveLength(1))
+    expect(payloads[0]?.events[0]?.type).toBe('resource')
+  })
+
+  it('rel에 여러 값이 와도 stylesheet를 찾아낸다', async () => {
+    const { transport, payloads } = recorder()
+    render(
+      <ErrorLogProvider {...base} {...eager} transport={transport}>
+        <p>본문</p>
+      </ErrorLogProvider>,
+    )
+    dispatchResourceError(
+      'link',
+      `${window.location.origin}/assets/index-abc.css`,
+      'preload stylesheet',
+    )
+    await waitFor(() => expect(payloads).toHaveLength(1))
+    expect(payloads[0]?.events[0]?.type).toBe('chunkload')
+  })
+
   it('이미지 로드 실패를 resource로 수집한다', async () => {
     const { transport, payloads } = recorder()
     render(
@@ -144,6 +189,23 @@ describe('ErrorLogProvider', () => {
     dispatchResourceError('script', `${window.location.origin}/assets/index-abc.js`)
     await waitFor(() => expect(payloads).toHaveLength(1))
     expect(payloads[0]?.events[0]?.type).toBe('chunkload')
+  })
+
+  it('ignoreResource는 청크 실패에도 적용된다', async () => {
+    const { transport, payloads } = recorder()
+    render(
+      <ErrorLogProvider
+        {...base}
+        {...eager}
+        transport={transport}
+        ignoreResource={[/\/assets\/index-abc\.js$/]}
+      >
+        <p>본문</p>
+      </ErrorLogProvider>,
+    )
+    dispatchResourceError('script', `${window.location.origin}/assets/index-abc.js`)
+    await settle()
+    expect(payloads).toHaveLength(0)
   })
 
   it('ignoreResource에 걸리는 URL만 빼고 수집한다', async () => {
