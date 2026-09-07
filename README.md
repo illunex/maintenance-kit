@@ -305,6 +305,48 @@ preflight를 피하려고 `Content-Type: text/plain;charset=UTF-8`로 보내므�
 `service`·`env`를 확인할 수 없으면 수집을 시작하지 않고 역시 경고를 남깁니다 —
 조용히 비활성되면 발견이 늦기 때문입니다.
 
+### 스택 심볼화 (0.5.0~)
+
+배포 번들은 압축돼 있어서 수집된 스택이 `at y (index-CtmyWNbP.js:13321:941)`처럼
+남습니다. 어느 파일 몇 번째 줄인지 알 수 없으므로 소스맵으로 되돌려야 합니다.
+
+```bash
+pnpm exec maintenance-kit-symbolicate --maps ./dist/assets error.json
+# 클립보드에서 바로
+pbpaste | pnpm exec maintenance-kit-symbolicate --maps ./dist/assets
+```
+
+```
+# em-stock-front · production · 356698d
+
+[1] TypeError: Cannot read properties of undefined (reading '0')
+    https://stocklink.ai/stock/034220  1920x1080  user=10482
+TypeError: Cannot read properties of undefined (reading '0')
+    at y (src/components/common/SearchSuggestions/SearchSuggestionsPopup/index.tsx:52:19)
+    at handleOnEnter (src/components/common/SearchSuggestions/SearchSuggestionsPopup/index.tsx:89:22)
+```
+
+입력은 수집 로그 JSON(수집 서버가 감싼 봉투·`payload` 원본 둘 다)이거나 스택 원문입니다.
+`--maps`는 `.map` 파일이 있는 폴더로, 하위 폴더까지 훑어 파일명으로 찾습니다.
+
+**소스맵을 못 찾거나 매핑이 없는 줄은 원문 그대로 남깁니다.** 배포본이 섞여 일부 청크의
+소스맵만 없을 때, 한 줄 때문에 나머지 스택까지 잃지 않기 위해서입니다.
+
+`.map`은 **배포 산출물에서 지우고 비공개로 따로 보관**해야 합니다(위 CI 절차 참고).
+공개된 채로 두면 원본 코드가 그대로 복원됩니다.
+
+라이브러리로도 쓸 수 있습니다.
+
+```ts
+import { symbolicateStack } from '@illunex-front/maintenance-kit/symbolicate'
+
+symbolicateStack(event.stack, (fileName) => loadMap(fileName))
+```
+
+`source-map` 패키지를 쓰지 않고 디코더를 직접 구현했습니다. 이 킷은 런타임 의존성이
+0개인데 CLI 하나 때문에 앱 전체에 의존성을 늘릴 이유가 없고, `source-map` 0.7부터는
+wasm 초기화가 필요해 CLI에서 다루기 번거롭습니다.
+
 ### 전송 필드 (schemaVersion 2)
 
 봉투에 세션 내내 고정인 값을, 이벤트에 발생 시점마다 달라지는 값을 담습니다.
@@ -377,6 +419,7 @@ UA를 이벤트마다 반복해 실으면 요청 예산(48KB)을 그것만으로
 - `<ErrorLogProvider getUser? captureResource? ignoreResource?>` · `<ErrorLogBoundary>` · `installGlobalHandlers()` (`/logger/react`)
 - `errorLoggerEnv(options?)` (`/vite`) · `withErrorLogger(nextConfig, options?)` (`/next/config`)
 - `consoleTransport()` · `httpTransport(endpoint)` — 전송 경로 교체용
+- `symbolicateStack(stack, resolve)` (`/symbolicate`) · `maintenance-kit-symbolicate --maps <폴더>` — 압축된 스택을 원본 위치로 복원
 
 ## License
 

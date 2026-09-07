@@ -51,4 +51,17 @@ export default defineConfig([
     entry: { 'next-config': 'src/next-config/index.ts' },
     platform: 'node',
   },
+  // 소스맵 심볼화 — 배포 산출물이 아니라 개발자 도구라 Node 전용이다
+  {
+    ...shared,
+    entry: { symbolicate: 'src/symbolicate/index.ts' },
+    platform: 'node',
+  },
+  {
+    ...shared,
+    format: ['cjs'],
+    dts: false,
+    entry: { 'symbolicate-cli': 'src/symbolicate/cli.ts' },
+    platform: 'node',
+  },
 ])
