@@ -8,6 +8,7 @@ import type { GlobalHandlerOptions } from './handlers'
 
 export type {
   CaptureInput,
+  ErrorLogClient,
   ErrorLogContext,
   ErrorLogEvent,
   ErrorLogLevel,

@@ -1,4 +1,5 @@
 import { readBuildValues } from './build-values'
+import { readClient } from './client'
 import { buildEvent } from './event'
 import { resolveLimits } from './limits'
 import { ErrorLogQueue } from './queue'
@@ -9,6 +10,7 @@ import { warn } from './warn'
 
 export type {
   CaptureInput,
+  ErrorLogClient,
   ErrorLogContext,
   ErrorLogEvent,
   ErrorLogLevel,
@@ -22,8 +24,9 @@ export type {
 export { DEFAULT_LIMITS, FIELD_LIMITS, SCHEMA_VERSION } from './limits'
 export { consoleTransport, httpTransport } from './transport'
 export { createFingerprint } from './fingerprint'
-export { sanitizeContext, scrub, stripQuery, truncate } from './mask'
+export { sanitizeContext, sanitizeUserId, scrub, stripQuery, truncate } from './mask'
 export { buildEvent } from './event'
+export { parseBrowser, parseOs, readClient, readViewport } from './client'
 
 /**
  * 초기화 전에 잡힌 이벤트를 잠시 담아두는 버퍼.
@@ -87,10 +90,12 @@ export function initErrorLogger(config: ErrorLoggerConfig = {}): boolean {
     env,
     release: config.release ?? build.release,
     sessionId: resolveSessionId(),
+    client: readClient(),
     transport,
     limits: resolveLimits(config.limits),
   })
   sampleRate = resolveSampleRate(config.sampleRate)
+  getUser = typeof config.getUser === 'function' ? config.getUser : null
 
   // 초기화 전에 쌓인 이벤트를 큐로 옮긴다
   const buffered = preInit
@@ -100,17 +105,33 @@ export function initErrorLogger(config: ErrorLoggerConfig = {}): boolean {
 }
 
 let sampleRate = 1
+let getUser: NonNullable<ErrorLoggerConfig['getUser']> | null = null
+
+/**
+ * 캡처 시점의 회원 식별자를 읽는다.
+ * 앱 코드가 던지더라도 에러 수집 자체가 멈추면 안 되므로 삼킨다 —
+ * 여기서 던지면 그 에러를 전역 핸들러가 다시 잡아 무한 루프가 된다.
+ */
+function currentUser(): unknown {
+  if (getUser === null) return undefined
+  try {
+    return getUser()
+  } catch {
+    return undefined
+  }
+}
 
 /** 에러 1건을 큐에 넣는다. 초기화 전 이벤트는 버퍼에 담았다가 초기화 시점에 합류시킨다 */
 export function captureError(input: CaptureInput): void {
   if (queue === null) {
+    // 초기화 전에는 설정을 모르므로 식별자 없이 담는다 (로그인 이전 시점이기도 하다)
     if (preInit.length < PRE_INIT_LIMIT) preInit.push(buildEvent(input))
     return
   }
   // 전송 중 발생한 에러를 다시 담으면 무한 루프가 된다
   if (queue.isSending) return
   if (sampleRate < 1 && Math.random() >= sampleRate) return
-  queue.add(buildEvent(input))
+  queue.add(buildEvent(input, currentUser()))
 }
 
 /** 남은 이벤트를 즉시 보낸다 (페이지 이탈 시점용) */
@@ -128,4 +149,5 @@ export function resetErrorLogger(): void {
   queue = null
   preInit = []
   sampleRate = 1
+  getUser = null
 }

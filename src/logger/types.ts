@@ -18,6 +18,19 @@ export interface ErrorLogContext {
   component?: string
 }
 
+/**
+ * 세션 단위로 고정인 클라이언트 정보.
+ * 파싱값과 원문을 함께 두는 이유는 client.ts의 readClient 주석에 있다.
+ */
+export interface ErrorLogClient {
+  /** UA 원문 — 규칙이 못 잡은 브라우저를 서버에서 다시 볼 때 쓴다 */
+  userAgent?: string
+  /** "Chrome 153" */
+  browser?: string
+  /** "Windows 10+", "iOS 17.5" */
+  os?: string
+}
+
 /** 수집 서버로 보내는 에러 이벤트 1건 */
 export interface ErrorLogEvent {
   id: string
@@ -30,6 +43,13 @@ export interface ErrorLogEvent {
   /** 쿼리스트링을 제거한 발생 페이지 */
   url?: string
   userAgent?: string
+  /** 에러 시점의 표시 영역 "1920x1080" — 모바일 폭에서만 나는 에러를 가른다 */
+  viewport?: string
+  /**
+   * 앱이 넘긴 회원 식별자(getUser). 설정하지 않으면 없다.
+   * 봉투가 아니라 이벤트에 두는 이유는 한 세션 안에서 로그인·로그아웃으로 바뀌기 때문이다.
+   */
+  user?: string
   /** 동일 에러를 묶는 키 */
   fingerprint: string
   /** 같은 fingerprint가 합산된 횟수 */
@@ -46,6 +66,7 @@ export interface ErrorLogPayload {
   env: string
   release?: string
   sessionId: string
+  client?: ErrorLogClient
   events: ErrorLogEvent[]
 }
 
@@ -102,6 +123,17 @@ export interface ErrorLoggerConfig {
   /** 0~1. 기본 1(전량 전송) — 상한이 이미 강해서 초기부터 줄일 이유가 없다 */
   sampleRate?: number
   limits?: Partial<ErrorLoggerLimits>
+  /**
+   * 회원 식별자(member index)를 돌려준다. 없으면 undefined·null을 돌려주면 된다.
+   *
+   * 프로젝트마다 식별자를 두는 곳(스토어·쿠키·토큰 클레임)이 달라 킷이 직접 읽지 않고
+   * 앱이 넘기게 뒀다. 값이 아니라 함수를 받는 이유는, 초기화는 앱 진입 시 1회인데
+   * 로그인은 그 뒤에 일어나서 정적 값으로 받으면 로그인 이후 이벤트에 식별자가 비기 때문이다.
+   *
+   * 개인정보가 로그로 새지 않도록 `[A-Za-z0-9_-]` 64자 이내만 통과시킨다.
+   * 이메일·전화번호처럼 그 자체로 개인정보인 값은 통과하지 못하고 경고로 남는다.
+   */
+  getUser?: () => string | number | null | undefined
   /** false면 수집을 완전히 끈다 */
   enabled?: boolean
 }

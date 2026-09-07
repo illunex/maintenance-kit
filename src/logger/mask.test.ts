@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { sanitizeContext, scrub, stripQuery, truncate } from './mask'
+import { sanitizeContext, sanitizeUserId, scrub, stripQuery, truncate } from './mask'
 
 describe('scrub', () => {
   it('이메일을 치환한다', () => {
@@ -70,5 +70,39 @@ describe('sanitizeContext', () => {
   it('허용 키가 하나도 없으면 undefined를 돌려준다', () => {
     expect(sanitizeContext({ userId: 1 })).toBeUndefined()
     expect(sanitizeContext(null)).toBeUndefined()
+  })
+})
+
+describe('sanitizeUserId', () => {
+  it('회원 번호는 숫자로 받아도 문자열로 싣는다', () => {
+    expect(sanitizeUserId(10482)).toBe('10482')
+    expect(sanitizeUserId('10482')).toBe('10482')
+  })
+
+  it('UUID·대체 식별자도 통과시킨다', () => {
+    expect(sanitizeUserId('9f2c-4d1e-a77b')).toBe('9f2c-4d1e-a77b')
+    expect(sanitizeUserId('user_123')).toBe('user_123')
+  })
+
+  // 16자리 회원 번호가 scrub의 카드번호 패턴에 걸려 [card]로 바뀌면 식별자가 망가진다
+  it('긴 숫자 식별자를 카드번호로 오인해 마스킹하지 않는다', () => {
+    expect(sanitizeUserId('1234567812345678')).toBe('1234567812345678')
+  })
+
+  it('그 자체가 개인정보인 값은 싣지 않는다', () => {
+    expect(sanitizeUserId('hong@example.com')).toBeUndefined()
+    expect(sanitizeUserId('010-1234-5678')).toBeUndefined()
+  })
+
+  it('식별자로 보기 어려운 값은 싣지 않는다', () => {
+    expect(sanitizeUserId('a'.repeat(65))).toBeUndefined()
+    expect(sanitizeUserId({ id: 1 })).toBeUndefined()
+    expect(sanitizeUserId(Number.NaN)).toBeUndefined()
+  })
+
+  it('식별자가 없는 상태는 경고 없이 넘어간다', () => {
+    expect(sanitizeUserId(undefined)).toBeUndefined()
+    expect(sanitizeUserId(null)).toBeUndefined()
+    expect(sanitizeUserId('')).toBeUndefined()
   })
 })

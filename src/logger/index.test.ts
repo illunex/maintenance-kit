@@ -120,3 +120,54 @@ describe('flushErrorLogs', () => {
     expect(() => flushErrorLogs()).not.toThrow()
   })
 })
+
+describe('회원 식별자', () => {
+  it('getUser()로 넘긴 회원 식별자를 이벤트에 싣는다', async () => {
+    const { transport, payloads } = recorder()
+    initErrorLogger({ ...base, transport, getUser: () => 10482 })
+
+    captureError({ error: new Error('boom') })
+    flushErrorLogs()
+    await vi.waitFor(() => expect(payloads).toHaveLength(1))
+
+    expect(payloads[0]?.events[0]?.user).toBe('10482')
+  })
+
+  /**
+   * 초기화는 앱 진입 시 1회인데 로그인은 그 뒤에 일어난다.
+   * 캡처 시점에 읽지 않으면 로그인 이후 이벤트의 식별자가 통째로 빈다.
+   */
+  it('로그인 시점이 초기화보다 늦어도 식별자가 잡힌다', async () => {
+    const { transport, payloads } = recorder()
+    let memberIndex: number | null = null
+    initErrorLogger({ ...base, transport, getUser: () => memberIndex })
+
+    captureError({ error: new Error('로그인 전') })
+    memberIndex = 10482
+    captureError({ error: new Error('로그인 후') })
+    flushErrorLogs()
+    await vi.waitFor(() => expect(payloads).toHaveLength(1))
+
+    expect(payloads[0]?.events[0]?.user).toBeUndefined()
+    expect(payloads[0]?.events[1]?.user).toBe('10482')
+  })
+
+  // 여기서 던지면 전역 핸들러가 그 에러를 다시 잡아 무한 루프가 된다
+  it('getUser()가 던져도 이벤트는 수집한다', async () => {
+    const { transport, payloads } = recorder()
+    initErrorLogger({
+      ...base,
+      transport,
+      getUser: () => {
+        throw new Error('스토어 초기화 전')
+      },
+    })
+
+    captureError({ error: new Error('boom') })
+    flushErrorLogs()
+    await vi.waitFor(() => expect(payloads).toHaveLength(1))
+
+    expect(payloads[0]?.events[0]?.user).toBeUndefined()
+    expect(payloads[0]?.events[0]?.message).toBe('boom')
+  })
+})

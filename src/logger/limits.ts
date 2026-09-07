@@ -1,7 +1,11 @@
 import type { ErrorLoggerLimits } from './types'
 import { warn } from './warn'
 
-export const SCHEMA_VERSION = 1
+/**
+ * 2: 봉투에 client(브라우저·OS·UA), 이벤트에 viewport·user 추가.
+ * 필드 추가만 있고 없어진 필드는 없어서 1을 읽던 수집 스택은 그대로 동작한다.
+ */
+export const SCHEMA_VERSION = 2
 
 /**
  * 필드별 길이 상한.
@@ -12,6 +16,8 @@ export const FIELD_LIMITS = {
   message: 1024,
   url: 512,
   userAgent: 512,
+  /** 회원 식별자 — 이보다 길면 식별자가 아니라 다른 값이 실려온 것으로 본다 */
+  user: 64,
   /** 이벤트 1건 직렬화 상한 — 초과 시 stack을 추가로 줄인다 */
   event: 16 * 1024,
 } as const
