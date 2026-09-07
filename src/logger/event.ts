@@ -1,8 +1,16 @@
+import { readViewport } from './client'
 import { createFingerprint } from './fingerprint'
 import { FIELD_LIMITS } from './limits'
-import { sanitizeContext, scrub, stripQuery, truncate } from './mask'
+import {
+  sanitizeContext,
+  sanitizePlan,
+  sanitizeUserId,
+  scrub,
+  stripQuery,
+  truncate,
+} from './mask'
 import { createEventId } from './session'
-import type { CaptureInput, ErrorLogEvent } from './types'
+import type { CaptureInput, ErrorLogEvent, ErrorLogUser } from './types'
 
 interface NormalizedError {
   name: string
@@ -102,8 +110,14 @@ function currentUserAgent(): string | undefined {
 /**
  * 잡힌 에러를 전송 가능한 이벤트로 만든다.
  * 마스킹과 길이 상한을 여기서 한 번에 적용해, 큐에는 이미 안전한 값만 들어간다.
+ *
+ * user는 앱이 설정한 getUser()의 결과로, 호출부(index.ts)가 캡처 시점에 읽어 넘긴다.
+ * 여기서 직접 읽지 않는 이유는 초기화 전 버퍼에 담기는 이벤트에는 아직 설정이 없기 때문이다.
  */
-export function buildEvent(input: CaptureInput): ErrorLogEvent {
+export function buildEvent(
+  input: CaptureInput,
+  user?: ErrorLogUser,
+): ErrorLogEvent {
   const { name, message, stack } = normalizeError(input.error)
 
   const scrubbedMessage = truncate(scrub(message), FIELD_LIMITS.message)
@@ -122,6 +136,9 @@ export function buildEvent(input: CaptureInput): ErrorLogEvent {
     stack: scrubbedStack?.value,
     url: currentUrl(),
     userAgent: currentUserAgent(),
+    viewport: readViewport(),
+    user: sanitizeUserId(user?.id),
+    plan: sanitizePlan(user?.plan),
     fingerprint: createFingerprint(name, message, stack),
     count: 1,
     truncated:

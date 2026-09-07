@@ -2,6 +2,7 @@ import { fitEvent } from './event'
 import { SCHEMA_VERSION } from './limits'
 import { createEventId } from './session'
 import type {
+  ErrorLogClient,
   ErrorLogEvent,
   ErrorLogPayload,
   ErrorLoggerLimits,
@@ -24,6 +25,7 @@ export interface QueueOptions {
   env: string
   release?: string
   sessionId: string
+  client?: ErrorLogClient
   transport: Transport
   limits: ErrorLoggerLimits
 }
@@ -153,6 +155,7 @@ export class ErrorLogQueue {
       env: this.options.env,
       release: this.options.release,
       sessionId: this.options.sessionId,
+      client: this.options.client,
       events,
     }
   }

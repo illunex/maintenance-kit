@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildEvent } from './event'
-import { resolveLimits } from './limits'
+import { resolveLimits, SCHEMA_VERSION } from './limits'
 import { ErrorLogQueue } from './queue'
 import type { ErrorLogPayload, Transport, TransportResult } from './types'
 
@@ -61,7 +61,7 @@ describe('ErrorLogQueue', () => {
     queue.add(error('a'))
     await vi.waitFor(() => expect(payloads).toHaveLength(1))
     expect(payloads[0]).toMatchObject({
-      schemaVersion: 1,
+      schemaVersion: SCHEMA_VERSION,
       service: 'em-stock-front',
       env: 'production',
       release: '0f3ab21',

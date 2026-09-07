@@ -120,3 +120,120 @@ describe('flushErrorLogs', () => {
     expect(() => flushErrorLogs()).not.toThrow()
   })
 })
+
+describe('회원 식별자', () => {
+  it('getUser()로 넘긴 회원 식별자를 이벤트에 싣는다', async () => {
+    const { transport, payloads } = recorder()
+    initErrorLogger({ ...base, transport, getUser: () => 10482 })
+
+    captureError({ error: new Error('boom') })
+    flushErrorLogs()
+    await vi.waitFor(() => expect(payloads).toHaveLength(1))
+
+    expect(payloads[0]?.events[0]?.user).toBe('10482')
+  })
+
+  /**
+   * 초기화는 앱 진입 시 1회인데 로그인은 그 뒤에 일어난다.
+   * 캡처 시점에 읽지 않으면 로그인 이후 이벤트의 식별자가 통째로 빈다.
+   */
+  it('로그인 시점이 초기화보다 늦어도 식별자가 잡힌다', async () => {
+    const { transport, payloads } = recorder()
+    let memberIndex: number | null = null
+    initErrorLogger({ ...base, transport, getUser: () => memberIndex })
+
+    captureError({ error: new Error('로그인 전') })
+    memberIndex = 10482
+    captureError({ error: new Error('로그인 후') })
+    flushErrorLogs()
+    await vi.waitFor(() => expect(payloads).toHaveLength(1))
+
+    expect(payloads[0]?.events[0]?.user).toBeUndefined()
+    expect(payloads[0]?.events[1]?.user).toBe('10482')
+  })
+
+  // 여기서 던지면 전역 핸들러가 그 에러를 다시 잡아 무한 루프가 된다
+  it('getUser()가 던져도 이벤트는 수집한다', async () => {
+    const { transport, payloads } = recorder()
+    initErrorLogger({
+      ...base,
+      transport,
+      getUser: () => {
+        throw new Error('스토어 초기화 전')
+      },
+    })
+
+    captureError({ error: new Error('boom') })
+    flushErrorLogs()
+    await vi.waitFor(() => expect(payloads).toHaveLength(1))
+
+    expect(payloads[0]?.events[0]?.user).toBeUndefined()
+    expect(payloads[0]?.events[0]?.message).toBe('boom')
+  })
+})
+
+describe('요금제·라이선스 등급', () => {
+  it('객체로 넘기면 식별자와 등급을 함께 싣는다', async () => {
+    const { transport, payloads } = recorder()
+    initErrorLogger({
+      ...base,
+      transport,
+      getUser: () => ({ id: 10482, plan: '프리미엄' }),
+    })
+
+    captureError({ error: new Error('boom') })
+    flushErrorLogs()
+    await vi.waitFor(() => expect(payloads).toHaveLength(1))
+
+    expect(payloads[0]?.events[0]?.user).toBe('10482')
+    expect(payloads[0]?.events[0]?.plan).toBe('프리미엄')
+  })
+
+  // 등급명은 개인정보가 아닌 분류값이라 id와 달리 한글·공백을 막지 않는다
+  it('등급만 넘겨도 되고, 식별자만 넘겨도 된다', async () => {
+    const { transport, payloads } = recorder()
+    initErrorLogger({ ...base, transport, getUser: () => ({ plan: 'FREE 체험' }) })
+
+    captureError({ error: new Error('boom') })
+    flushErrorLogs()
+    await vi.waitFor(() => expect(payloads).toHaveLength(1))
+
+    expect(payloads[0]?.events[0]?.plan).toBe('FREE 체험')
+    expect(payloads[0]?.events[0]?.user).toBeUndefined()
+  })
+})
+
+/**
+ * 새 필드는 전부 선택이다.
+ * 앱이 준비된 값만 넘기고 나머지는 그냥 두면 되도록, 값이 없으면 키째로 빠져야 한다
+ * (null이 남으면 수집 쪽에서 "없음"과 "빈 값"을 구분해야 한다).
+ */
+describe('넘기지 않은 필드', () => {
+  it('getUser를 설정하지 않으면 user·plan 키 자체가 없다', async () => {
+    const { transport, payloads } = recorder()
+    initErrorLogger({ ...base, transport })
+
+    captureError({ error: new Error('boom') })
+    flushErrorLogs()
+    await vi.waitFor(() => expect(payloads).toHaveLength(1))
+
+    const [event] = JSON.parse(JSON.stringify(payloads[0])).events
+    expect(event).not.toHaveProperty('user')
+    expect(event).not.toHaveProperty('plan')
+  })
+
+  it('일부만 넘기면 넘긴 것만 실리고 경고도 남기지 않는다', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const { transport, payloads } = recorder()
+    initErrorLogger({ ...base, transport, getUser: () => ({ plan: '프리미엄' }) })
+
+    captureError({ error: new Error('boom') })
+    flushErrorLogs()
+    await vi.waitFor(() => expect(payloads).toHaveLength(1))
+
+    const [event] = JSON.parse(JSON.stringify(payloads[0])).events
+    expect(event.plan).toBe('프리미엄')
+    expect(event).not.toHaveProperty('user')
+    expect(warn).not.toHaveBeenCalled()
+  })
+})

@@ -1,155 +1,168 @@
 {
-  "name": "@illunex-front/maintenance-kit",
-  "version": "0.4.0",
-  "publishConfig": {
-    "access": "public"
-  },
-  "description": "Maintenance mode provider for React, Next.js and vanilla JS — checks a remote JSON endpoint and renders a maintenance screen.",
-  "keywords": [
-    "maintenance",
-    "maintenance-mode",
-    "maintenance-page",
-    "react",
-    "nextjs",
-    "provider"
-  ],
-  "license": "MIT",
-  "author": "ILLUNEX",
-  "type": "module",
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.js"
-      },
-      "require": {
-        "types": "./dist/index.d.cts",
-        "default": "./dist/index.cjs"
-      }
-    },
-    "./react": {
-      "import": {
-        "types": "./dist/react.d.ts",
-        "default": "./dist/react.js"
-      },
-      "require": {
-        "types": "./dist/react.d.cts",
-        "default": "./dist/react.cjs"
-      }
-    },
-    "./next": {
-      "import": {
-        "types": "./dist/next.d.ts",
-        "default": "./dist/next.js"
-      },
-      "require": {
-        "types": "./dist/next.d.cts",
-        "default": "./dist/next.cjs"
-      }
-    },
-    "./next/server": {
-      "import": {
-        "types": "./dist/next-server.d.ts",
-        "default": "./dist/next-server.js"
-      },
-      "require": {
-        "types": "./dist/next-server.d.cts",
-        "default": "./dist/next-server.cjs"
-      }
-    },
-    "./logger": {
-      "import": {
-        "types": "./dist/logger.d.ts",
-        "default": "./dist/logger.js"
-      },
-      "require": {
-        "types": "./dist/logger.d.cts",
-        "default": "./dist/logger.cjs"
-      }
-    },
-    "./logger/react": {
-      "import": {
-        "types": "./dist/logger-react.d.ts",
-        "default": "./dist/logger-react.js"
-      },
-      "require": {
-        "types": "./dist/logger-react.d.cts",
-        "default": "./dist/logger-react.cjs"
-      }
-    },
-    "./vite": {
-      "import": {
-        "types": "./dist/vite.d.ts",
-        "default": "./dist/vite.js"
-      },
-      "require": {
-        "types": "./dist/vite.d.cts",
-        "default": "./dist/vite.cjs"
-      }
-    },
-    "./next/config": {
-      "import": {
-        "types": "./dist/next-config.d.ts",
-        "default": "./dist/next-config.js"
-      },
-      "require": {
-        "types": "./dist/next-config.d.cts",
-        "default": "./dist/next-config.cjs"
-      }
-    },
-    "./package.json": "./package.json"
-  },
-  "files": [
-    "dist"
-  ],
-  "sideEffects": false,
-  "scripts": {
-    "build": "rm -rf dist && tsup",
-    "dev": "tsup --watch",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "prepublishOnly": "pnpm typecheck && pnpm test && pnpm build"
-  },
-  "peerDependencies": {
-    "next": ">=13",
-    "react": ">=17",
-    "react-dom": ">=17"
-  },
-  "peerDependenciesMeta": {
-    "next": {
-      "optional": true
-    },
-    "react": {
-      "optional": true
-    },
-    "react-dom": {
-      "optional": true
-    }
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild"
-    ],
-    "overrides": {
-      "esbuild": "^0.28.1"
-    }
-  },
-  "devDependencies": {
-    "@testing-library/dom": "^10.4.1",
-    "@testing-library/react": "^16.3.2",
-    "@types/node": "^26.4.0",
-    "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.4",
-    "jsdom": "^26.1.0",
-    "next": "^16.3.0",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8",
-    "tsup": "^8.5.1",
-    "typescript": "^5.9.3",
-    "vitest": "^4.1.10"
-  }
+	"name": "@illunex-front/maintenance-kit",
+	"version": "0.5.0",
+	"publishConfig": {
+		"access": "public"
+	},
+	"description": "Maintenance mode provider for React, Next.js and vanilla JS — checks a remote JSON endpoint and renders a maintenance screen.",
+	"keywords": [
+		"maintenance",
+		"maintenance-mode",
+		"maintenance-page",
+		"react",
+		"nextjs",
+		"provider"
+	],
+	"license": "MIT",
+	"author": "ILLUNEX",
+	"type": "module",
+	"main": "./dist/index.cjs",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"import": {
+				"types": "./dist/index.d.ts",
+				"default": "./dist/index.js"
+			},
+			"require": {
+				"types": "./dist/index.d.cts",
+				"default": "./dist/index.cjs"
+			}
+		},
+		"./react": {
+			"import": {
+				"types": "./dist/react.d.ts",
+				"default": "./dist/react.js"
+			},
+			"require": {
+				"types": "./dist/react.d.cts",
+				"default": "./dist/react.cjs"
+			}
+		},
+		"./next": {
+			"import": {
+				"types": "./dist/next.d.ts",
+				"default": "./dist/next.js"
+			},
+			"require": {
+				"types": "./dist/next.d.cts",
+				"default": "./dist/next.cjs"
+			}
+		},
+		"./next/server": {
+			"import": {
+				"types": "./dist/next-server.d.ts",
+				"default": "./dist/next-server.js"
+			},
+			"require": {
+				"types": "./dist/next-server.d.cts",
+				"default": "./dist/next-server.cjs"
+			}
+		},
+		"./logger": {
+			"import": {
+				"types": "./dist/logger.d.ts",
+				"default": "./dist/logger.js"
+			},
+			"require": {
+				"types": "./dist/logger.d.cts",
+				"default": "./dist/logger.cjs"
+			}
+		},
+		"./logger/react": {
+			"import": {
+				"types": "./dist/logger-react.d.ts",
+				"default": "./dist/logger-react.js"
+			},
+			"require": {
+				"types": "./dist/logger-react.d.cts",
+				"default": "./dist/logger-react.cjs"
+			}
+		},
+		"./vite": {
+			"import": {
+				"types": "./dist/vite.d.ts",
+				"default": "./dist/vite.js"
+			},
+			"require": {
+				"types": "./dist/vite.d.cts",
+				"default": "./dist/vite.cjs"
+			}
+		},
+		"./next/config": {
+			"import": {
+				"types": "./dist/next-config.d.ts",
+				"default": "./dist/next-config.js"
+			},
+			"require": {
+				"types": "./dist/next-config.d.cts",
+				"default": "./dist/next-config.cjs"
+			}
+		},
+		"./symbolicate": {
+			"import": {
+				"types": "./dist/symbolicate.d.ts",
+				"default": "./dist/symbolicate.js"
+			},
+			"require": {
+				"types": "./dist/symbolicate.d.cts",
+				"default": "./dist/symbolicate.cjs"
+			}
+		},
+		"./package.json": "./package.json"
+	},
+	"files": [
+		"dist"
+	],
+	"sideEffects": false,
+	"scripts": {
+		"build": "rm -rf dist && tsup",
+		"dev": "tsup --watch",
+		"typecheck": "tsc --noEmit",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"prepublishOnly": "pnpm typecheck && pnpm test && pnpm build"
+	},
+	"peerDependencies": {
+		"next": ">=13",
+		"react": ">=17",
+		"react-dom": ">=17"
+	},
+	"peerDependenciesMeta": {
+		"next": {
+			"optional": true
+		},
+		"react": {
+			"optional": true
+		},
+		"react-dom": {
+			"optional": true
+		}
+	},
+	"pnpm": {
+		"onlyBuiltDependencies": [
+			"esbuild"
+		],
+		"overrides": {
+			"esbuild": "^0.28.1"
+		}
+	},
+	"devDependencies": {
+		"@testing-library/dom": "^10.4.1",
+		"@testing-library/react": "^16.3.2",
+		"@types/node": "^26.4.0",
+		"@types/react": "^19.2.18",
+		"@types/react-dom": "^19.2.4",
+		"jsdom": "^26.1.0",
+		"next": "^16.3.0",
+		"react": "^19.2.8",
+		"react-dom": "^19.2.8",
+		"tsup": "^8.5.1",
+		"typescript": "^5.9.3",
+		"vitest": "^4.1.10"
+	},
+	"bin": {
+		"maintenance-kit-symbolicate": "./dist/symbolicate-cli.cjs"
+	}
 }

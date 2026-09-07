@@ -241,6 +241,45 @@ import { ErrorLogBoundary } from '@illunex-front/maintenance-kit/logger/react'
 React 없이 쓰려면 `@illunex-front/maintenance-kit/logger`의 `initErrorLogger`와
 `captureError`를 직접 호출하면 됩니다.
 
+#### 3. 사용자 정보 연결 (선택, 0.5.0~)
+
+로그만 봐서는 "이게 몇 명에게 나는 에러인지", "문의한 그 사용자가 맞는지"를 알 수
+없습니다. `getUser`로 넘기면 이벤트에 `user`·`plan`으로 실립니다.
+
+식별자를 두는 곳이 프로젝트마다 달라(스토어·쿠키·응답 필드) 킷이 직접 읽지 않고
+**앱이 함수로 넘기는** 방식입니다.
+
+```tsx
+// 식별자만
+<ErrorLogProvider getUser={() => useMemberInfoStore.getState().memberId}>
+
+// 요금제 등급까지
+<ErrorLogProvider
+  getUser={() => {
+    const { memberId, license } = useMemberInfoStore.getState()
+    return { id: memberId, plan: license.name }
+  }}
+>
+```
+
+값이 아니라 함수를 받는 이유는 **초기화가 앱 진입 시 1회**인데 로그인은 그 뒤에
+일어나기 때문입니다. 정적 값으로 넘기면 로그인 이후 이벤트의 정보가 통째로 빕니다.
+함수는 에러가 잡힌 순간마다 호출되므로 로그인·로그아웃·등급 변경이 그대로 반영되고,
+함수가 던져도 수집은 멈추지 않습니다.
+
+**`id`** 는 개인정보가 로그로 새지 않도록 `[A-Za-z0-9_-]` **64자 이내만** 통과합니다.
+
+| 넘긴 `id` | 결과 |
+| --- | --- |
+| `10482`, `'user_123'`, UUID | 그대로 실림 |
+| `'hong@example.com'` | 싣지 않고 경고 — 이메일 대신 회원 번호를 넘기세요 |
+| `'010-1234-5678'` | 싣지 않고 경고 |
+| 64자 초과·객체 | 싣지 않고 경고 |
+
+**`plan`** 은 개인정보가 아니라 분류값이라 형태를 강제하지 않습니다. 한글·공백이
+들어간 등급명(`'프리미엄 연간'`)을 그대로 쓰고, 값에 섞여 들어온 개인정보만 치환한
+뒤 64자로 자릅니다.
+
 ### 전송 동작
 
 | 항목 | 값 |
@@ -266,12 +305,98 @@ preflight를 피하려고 `Content-Type: text/plain;charset=UTF-8`로 보내므�
 `service`·`env`를 확인할 수 없으면 수집을 시작하지 않고 역시 경고를 남깁니다 —
 조용히 비활성되면 발견이 늦기 때문입니다.
 
+### 스택 심볼화 (0.5.0~)
+
+배포 번들은 압축돼 있어서 수집된 스택이 `at y (index-CtmyWNbP.js:13321:941)`처럼
+남습니다. 어느 파일 몇 번째 줄인지 알 수 없으므로 소스맵으로 되돌려야 합니다.
+
+```bash
+pnpm exec maintenance-kit-symbolicate --maps ./dist/assets error.json
+# 클립보드에서 바로
+pbpaste | pnpm exec maintenance-kit-symbolicate --maps ./dist/assets
+```
+
+```
+# em-stock-front · production · 356698d
+
+[1] TypeError: Cannot read properties of undefined (reading '0')
+    https://stocklink.ai/stock/034220  1920x1080  user=10482
+TypeError: Cannot read properties of undefined (reading '0')
+    at y (src/components/common/SearchSuggestions/SearchSuggestionsPopup/index.tsx:52:19)
+    at handleOnEnter (src/components/common/SearchSuggestions/SearchSuggestionsPopup/index.tsx:89:22)
+```
+
+입력은 수집 로그 JSON(수집 서버가 감싼 봉투·`payload` 원본 둘 다)이거나 스택 원문입니다.
+`--maps`는 `.map` 파일이 있는 폴더로, 하위 폴더까지 훑어 파일명으로 찾습니다.
+
+**소스맵을 못 찾거나 매핑이 없는 줄은 원문 그대로 남깁니다.** 배포본이 섞여 일부 청크의
+소스맵만 없을 때, 한 줄 때문에 나머지 스택까지 잃지 않기 위해서입니다.
+
+`.map`은 **배포 산출물에서 지우고 비공개로 따로 보관**해야 합니다(위 CI 절차 참고).
+공개된 채로 두면 원본 코드가 그대로 복원됩니다.
+
+라이브러리로도 쓸 수 있습니다.
+
+```ts
+import { symbolicateStack } from '@illunex-front/maintenance-kit/symbolicate'
+
+symbolicateStack(event.stack, (fileName) => loadMap(fileName))
+```
+
+`source-map` 패키지를 쓰지 않고 디코더를 직접 구현했습니다. 이 킷은 런타임 의존성이
+0개인데 CLI 하나 때문에 앱 전체에 의존성을 늘릴 이유가 없고, `source-map` 0.7부터는
+wasm 초기화가 필요해 CLI에서 다루기 번거롭습니다.
+
+### 전송 필드 (schemaVersion 2)
+
+봉투에 세션 내내 고정인 값을, 이벤트에 발생 시점마다 달라지는 값을 담습니다.
+UA를 이벤트마다 반복해 실으면 요청 예산(48KB)을 그것만으로 20% 넘게 씁니다.
+
+```jsonc
+{
+  "schemaVersion": 2,
+  "service": "em-stock-front",
+  "env": "production",
+  "release": "356698d",        // 소스맵 심볼화의 조인 키
+  "sessionId": "MTQJPEI1OJH2TKBU",
+  "client": {                   // 0.5.0~
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; ...) Chrome/153.0.0.0 ...",
+    "browser": "Chrome 153",
+    "os": "Windows 10+"
+  },
+  "events": [
+    {
+      "type": "error",
+      "name": "TypeError",
+      "message": "Cannot read properties of undefined (reading '0')",
+      "stack": "...",
+      "url": "https://stocklink.ai/stock/034220",
+      "viewport": "1920x1080",  // 0.5.0~ 모바일 폭에서만 나는 에러를 가른다
+      "user": "10482",          // 0.5.0~ getUser()를 설정한 경우에만
+      "plan": "프리미엄",         // 0.5.0~ getUser().plan을 넘긴 경우에만
+      "fingerprint": "050c9f94",
+      "count": 1,
+      "context": { "route": "/stock/034220" }
+    }
+  ]
+}
+```
+
+`browser`·`os`는 UA가 **보장하는 범위까지만** 적습니다. Windows 10과 11은 UA에서
+구분되지 않아(둘 다 `NT 10.0`) `Windows 10+`로, macOS는 Safari가 `10_15_7`로 고정
+보고해 버전 없이 `macOS`로 남깁니다. 규칙이 못 잡은 브라우저는 `client.userAgent`
+원문으로 서버에서 다시 볼 수 있습니다.
+
+`schemaVersion` 2는 **필드 추가만** 있고 없어진 필드가 없어, 1을 읽던 수집 스택은
+그대로 동작합니다.
+
 ### 개인정보 처리
 
 전송 필드는 고정되어 있고, 값에서 이메일·전화번호·주민등록번호·카드번호·JWT·Bearer
 토큰을 치환합니다. `url`은 쿼리스트링을 제거한 뒤 path까지 같은 치환을 거치며
 (`/users/hong@example.com` → `/users/[email]`), `context`는 `route`·`component`
-두 키만 통과시킵니다.
+두 키만 통과시킵니다. `getUser().id`로 넘긴 회원 식별자는 `[A-Za-z0-9_-]` 64자 이내이면서
+전화번호·주민등록번호 형태가 아닐 때만 실립니다(`plan`은 분류값이라 형태를 강제하지 않고 값 치환만 거칩니다).
 
 `Error`가 아닌 **객체가 throw되면 값이 아니라 형태만** 남깁니다
 (`Object 객체가 throw됨: status=500 (keys: status, body)`). 통째로 직렬화하면
@@ -290,10 +415,11 @@ preflight를 피하려고 `Content-Type: text/plain;charset=UTF-8`로 보내므�
 
 ### 에러 로거
 
-- `initErrorLogger(config)` / `captureError({ error, type?, level?, context? })` / `flushErrorLogs()` (`/logger`)
-- `<ErrorLogProvider>` · `<ErrorLogBoundary>` · `installGlobalHandlers()` (`/logger/react`)
+- `initErrorLogger(config)` / `captureError({ error, type?, level?, context? })` / `flushErrorLogs()` (`/logger`) — `config.getUser`로 회원 식별자·요금제 등급 연결
+- `<ErrorLogProvider getUser? captureResource? ignoreResource?>` · `<ErrorLogBoundary>` · `installGlobalHandlers()` (`/logger/react`)
 - `errorLoggerEnv(options?)` (`/vite`) · `withErrorLogger(nextConfig, options?)` (`/next/config`)
 - `consoleTransport()` · `httpTransport(endpoint)` — 전송 경로 교체용
+- `symbolicateStack(stack, resolve)` (`/symbolicate`) · `maintenance-kit-symbolicate --maps <폴더>` — 압축된 스택을 원본 위치로 복원
 
 ## License
 
