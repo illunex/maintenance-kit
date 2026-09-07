@@ -202,3 +202,38 @@ describe('요금제·라이선스 등급', () => {
     expect(payloads[0]?.events[0]?.user).toBeUndefined()
   })
 })
+
+/**
+ * 새 필드는 전부 선택이다.
+ * 앱이 준비된 값만 넘기고 나머지는 그냥 두면 되도록, 값이 없으면 키째로 빠져야 한다
+ * (null이 남으면 수집 쪽에서 "없음"과 "빈 값"을 구분해야 한다).
+ */
+describe('넘기지 않은 필드', () => {
+  it('getUser를 설정하지 않으면 user·plan 키 자체가 없다', async () => {
+    const { transport, payloads } = recorder()
+    initErrorLogger({ ...base, transport })
+
+    captureError({ error: new Error('boom') })
+    flushErrorLogs()
+    await vi.waitFor(() => expect(payloads).toHaveLength(1))
+
+    const [event] = JSON.parse(JSON.stringify(payloads[0])).events
+    expect(event).not.toHaveProperty('user')
+    expect(event).not.toHaveProperty('plan')
+  })
+
+  it('일부만 넘기면 넘긴 것만 실리고 경고도 남기지 않는다', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const { transport, payloads } = recorder()
+    initErrorLogger({ ...base, transport, getUser: () => ({ plan: '프리미엄' }) })
+
+    captureError({ error: new Error('boom') })
+    flushErrorLogs()
+    await vi.waitFor(() => expect(payloads).toHaveLength(1))
+
+    const [event] = JSON.parse(JSON.stringify(payloads[0])).events
+    expect(event.plan).toBe('프리미엄')
+    expect(event).not.toHaveProperty('user')
+    expect(warn).not.toHaveBeenCalled()
+  })
+})
