@@ -129,3 +129,52 @@ describe('sanitizePlan', () => {
     expect(sanitizePlan('')).toBeUndefined()
   })
 })
+
+describe('stripQuery 허용 키', () => {
+  it('기본은 쿼리를 전부 버린다', () => {
+    expect(stripQuery('https://a.com/insight?tab=momentum&q=x')).toBe(
+      'https://a.com/insight',
+    )
+  })
+
+  // /insight?tab=momentum 처럼 탭이 쿼리에 있는 화면을 구분하기 위한 것이다
+  it('허용한 키만 남긴다', () => {
+    expect(
+      stripQuery('https://a.com/insight?tab=momentum&token=secret', ['tab']),
+    ).toBe('https://a.com/insight?tab=momentum')
+  })
+
+  it('허용 키가 없으면 경로만 남는다', () => {
+    expect(stripQuery('https://a.com/insight?token=secret', ['tab'])).toBe(
+      'https://a.com/insight',
+    )
+  })
+
+  it('해시는 남기지 않는다', () => {
+    expect(stripQuery('https://a.com/insight?tab=a#section', ['tab'])).toBe(
+      'https://a.com/insight?tab=a',
+    )
+    // '#'이 '?'보다 앞이면 쿼리가 아니다
+    expect(stripQuery('https://a.com/p#x?tab=a', ['tab'])).toBe('https://a.com/p')
+  })
+
+  // 같은 화면이 매번 같은 문자열이 되어야 로그를 묶어 볼 수 있다
+  it('남기는 순서는 허용 키 순서를 따른다', () => {
+    expect(stripQuery('https://a.com/p?b=2&a=1', ['a', 'b'])).toBe(
+      'https://a.com/p?a=1&b=2',
+    )
+  })
+})
+
+describe('scrub 인코딩된 이메일', () => {
+  // 프로필 이미지 URL에 이메일이 %40으로 인코딩돼 들어온다
+  it('URL 인코딩된 이메일도 치환한다', () => {
+    expect(
+      scrub('https://s3/prod/Member/breadsy94%40illunex.com/a.jpeg'),
+    ).toBe('https://s3/prod/Member/[email]/a.jpeg')
+  })
+
+  it('평문 이메일은 그대로 치환한다', () => {
+    expect(scrub('hong@example.com 실패')).toBe('[email] 실패')
+  })
+})

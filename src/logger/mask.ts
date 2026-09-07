@@ -1,3 +1,4 @@
+import { keptQueryParams } from './keep-query'
 import { FIELD_LIMITS } from './limits'
 import { warn } from './warn'
 import type { ErrorLogContext } from './types'
@@ -11,6 +12,8 @@ const PII_PATTERNS: readonly (readonly [RegExp, string])[] = [
   [/Bearer\s+[\w.~+/=-]+/gi, 'Bearer [redacted]'],
   [/eyJ[\w-]+\.[\w-]+\.[\w-]+/g, '[jwt]'],
   [/[\w.+-]+@[\w-]+\.[\w.-]+/g, '[email]'],
+  // 프로필 이미지 URL처럼 경로에 이메일이 인코딩돼 들어오면 위 패턴을 그냥 통과한다
+  [/[\w.+-]+%40[\w-]+\.[\w.-]+/gi, '[email]'],
   [/\b\d{6}[-\s]?[1-4]\d{6}\b/g, '[rrn]'],
   [/\b(?:\d{4}[-\s]?){3}\d{4}\b/g, '[card]'],
   [/\b01[016-9][-\s]?\d{3,4}[-\s]?\d{4}\b/g, '[phone]'],
@@ -27,10 +30,40 @@ export function scrub(value: string): string {
 /**
  * URL에서 쿼리스트링·해시를 제거한다.
  * 프론트 에러 컨텍스트에 개인정보가 딸려 들어오는 가장 흔한 경로가 쿼리스트링이다.
+ *
+ * keep에 준 키만 남긴다. 탭·모드처럼 화면을 가르는 값이 쿼리에 있는 경우
+ * 통째로 버리면 어느 화면에서 난 에러인지 알 수 없어서다.
+ * 남긴 값도 뒤이어 scrub을 거치므로, 그 안에 개인정보가 섞여도 치환된다.
  */
-export function stripQuery(url: string): string {
+export function stripQuery(url: string, keep: readonly string[] = []): string {
   const cut = url.search(/[?#]/)
-  return cut === -1 ? url : url.slice(0, cut)
+  if (cut === -1) return url
+
+  const base = url.slice(0, cut)
+  if (keep.length === 0) return base
+
+  const queryStart = url.indexOf('?')
+  // '#'이 '?'보다 앞이면 쿼리가 아니라 해시 안의 문자다
+  if (queryStart === -1 || queryStart !== cut) return base
+
+  const hashCut = url.indexOf('#', queryStart)
+  const query = url.slice(queryStart + 1, hashCut === -1 ? url.length : hashCut)
+
+  let source: URLSearchParams
+  try {
+    source = new URLSearchParams(query)
+  } catch {
+    return base
+  }
+
+  // keep에 준 순서를 따른다 — 같은 화면이 매번 같은 문자열이 되어야 비교가 된다
+  const picked = new URLSearchParams()
+  keep.forEach((key) => {
+    source.getAll(key).forEach((value) => picked.append(key, value))
+  })
+
+  const rebuilt = picked.toString()
+  return rebuilt === '' ? base : `${base}?${rebuilt}`
 }
 
 export interface TruncateResult {
@@ -50,7 +83,9 @@ export function sanitizeContext(raw: unknown): ErrorLogContext | undefined {
   const record = raw as Record<string, unknown>
   const context: ErrorLogContext = {}
   if (typeof record.route === 'string') {
-    context.route = scrub(stripQuery(record.route)).slice(0, FIELD_LIMITS.url)
+    context.route = scrub(
+      stripQuery(record.route, keptQueryParams()),
+    ).slice(0, FIELD_LIMITS.url)
   }
   if (typeof record.component === 'string') {
     context.component = scrub(record.component).slice(0, 128)
