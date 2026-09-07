@@ -119,3 +119,13 @@ export function sanitizeUserId(raw: unknown): string | undefined {
   }
   return value
 }
+
+/**
+ * 요금제·라이선스 등급.
+ * 개인정보가 아니라 분류값이라 id처럼 형태를 강제하지 않고, 값 스크러버와 길이 상한만 건다
+ * (등급명에 한글·공백이 들어가는 게 정상이다).
+ */
+export function sanitizePlan(raw: unknown): string | undefined {
+  if (typeof raw !== 'string' || raw === '') return undefined
+  return scrub(raw).slice(0, FIELD_LIMITS.plan)
+}

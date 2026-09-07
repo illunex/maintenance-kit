@@ -171,3 +171,34 @@ describe('회원 식별자', () => {
     expect(payloads[0]?.events[0]?.message).toBe('boom')
   })
 })
+
+describe('요금제·라이선스 등급', () => {
+  it('객체로 넘기면 식별자와 등급을 함께 싣는다', async () => {
+    const { transport, payloads } = recorder()
+    initErrorLogger({
+      ...base,
+      transport,
+      getUser: () => ({ id: 10482, plan: '프리미엄' }),
+    })
+
+    captureError({ error: new Error('boom') })
+    flushErrorLogs()
+    await vi.waitFor(() => expect(payloads).toHaveLength(1))
+
+    expect(payloads[0]?.events[0]?.user).toBe('10482')
+    expect(payloads[0]?.events[0]?.plan).toBe('프리미엄')
+  })
+
+  // 등급명은 개인정보가 아닌 분류값이라 id와 달리 한글·공백을 막지 않는다
+  it('등급만 넘겨도 되고, 식별자만 넘겨도 된다', async () => {
+    const { transport, payloads } = recorder()
+    initErrorLogger({ ...base, transport, getUser: () => ({ plan: 'FREE 체험' }) })
+
+    captureError({ error: new Error('boom') })
+    flushErrorLogs()
+    await vi.waitFor(() => expect(payloads).toHaveLength(1))
+
+    expect(payloads[0]?.events[0]?.plan).toBe('FREE 체험')
+    expect(payloads[0]?.events[0]?.user).toBeUndefined()
+  })
+})

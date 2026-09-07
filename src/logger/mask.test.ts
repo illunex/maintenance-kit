@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { sanitizeContext, sanitizeUserId, scrub, stripQuery, truncate } from './mask'
+import {
+  sanitizeContext,
+  sanitizePlan,
+  sanitizeUserId,
+  scrub,
+  stripQuery,
+  truncate,
+} from './mask'
 
 describe('scrub', () => {
   it('이메일을 치환한다', () => {
@@ -104,5 +111,21 @@ describe('sanitizeUserId', () => {
     expect(sanitizeUserId(undefined)).toBeUndefined()
     expect(sanitizeUserId(null)).toBeUndefined()
     expect(sanitizeUserId('')).toBeUndefined()
+  })
+})
+
+describe('sanitizePlan', () => {
+  it('한글·공백이 섞인 등급명을 그대로 통과시킨다', () => {
+    expect(sanitizePlan('프리미엄 연간')).toBe('프리미엄 연간')
+  })
+
+  it('등급명에 개인정보가 섞여 들어오면 마스킹한다', () => {
+    expect(sanitizePlan('hong@example.com 전용')).toBe('[email] 전용')
+  })
+
+  it('문자열이 아니면 싣지 않는다', () => {
+    expect(sanitizePlan(3)).toBeUndefined()
+    expect(sanitizePlan(undefined)).toBeUndefined()
+    expect(sanitizePlan('')).toBeUndefined()
   })
 })

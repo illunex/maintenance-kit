@@ -1,9 +1,16 @@
 import { readViewport } from './client'
 import { createFingerprint } from './fingerprint'
 import { FIELD_LIMITS } from './limits'
-import { sanitizeContext, sanitizeUserId, scrub, stripQuery, truncate } from './mask'
+import {
+  sanitizeContext,
+  sanitizePlan,
+  sanitizeUserId,
+  scrub,
+  stripQuery,
+  truncate,
+} from './mask'
 import { createEventId } from './session'
-import type { CaptureInput, ErrorLogEvent } from './types'
+import type { CaptureInput, ErrorLogEvent, ErrorLogUser } from './types'
 
 interface NormalizedError {
   name: string
@@ -107,7 +114,10 @@ function currentUserAgent(): string | undefined {
  * user는 앱이 설정한 getUser()의 결과로, 호출부(index.ts)가 캡처 시점에 읽어 넘긴다.
  * 여기서 직접 읽지 않는 이유는 초기화 전 버퍼에 담기는 이벤트에는 아직 설정이 없기 때문이다.
  */
-export function buildEvent(input: CaptureInput, user?: unknown): ErrorLogEvent {
+export function buildEvent(
+  input: CaptureInput,
+  user?: ErrorLogUser,
+): ErrorLogEvent {
   const { name, message, stack } = normalizeError(input.error)
 
   const scrubbedMessage = truncate(scrub(message), FIELD_LIMITS.message)
@@ -127,7 +137,8 @@ export function buildEvent(input: CaptureInput, user?: unknown): ErrorLogEvent {
     url: currentUrl(),
     userAgent: currentUserAgent(),
     viewport: readViewport(),
-    user: sanitizeUserId(user),
+    user: sanitizeUserId(user?.id),
+    plan: sanitizePlan(user?.plan),
     fingerprint: createFingerprint(name, message, stack),
     count: 1,
     truncated:

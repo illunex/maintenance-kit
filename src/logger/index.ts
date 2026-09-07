@@ -5,7 +5,12 @@ import { resolveLimits } from './limits'
 import { ErrorLogQueue } from './queue'
 import { resolveSessionId } from './session'
 import { consoleTransport, httpTransport } from './transport'
-import type { CaptureInput, ErrorLogEvent, ErrorLoggerConfig } from './types'
+import type {
+  CaptureInput,
+  ErrorLogEvent,
+  ErrorLoggerConfig,
+  ErrorLogUser,
+} from './types'
 import { warn } from './warn'
 
 export type {
@@ -16,6 +21,7 @@ export type {
   ErrorLogLevel,
   ErrorLogPayload,
   ErrorLogType,
+  ErrorLogUser,
   ErrorLoggerConfig,
   ErrorLoggerLimits,
   Transport,
@@ -24,7 +30,14 @@ export type {
 export { DEFAULT_LIMITS, FIELD_LIMITS, SCHEMA_VERSION } from './limits'
 export { consoleTransport, httpTransport } from './transport'
 export { createFingerprint } from './fingerprint'
-export { sanitizeContext, sanitizeUserId, scrub, stripQuery, truncate } from './mask'
+export {
+  sanitizeContext,
+  sanitizePlan,
+  sanitizeUserId,
+  scrub,
+  stripQuery,
+  truncate,
+} from './mask'
 export { buildEvent } from './event'
 export { parseBrowser, parseOs, readClient, readViewport } from './client'
 
@@ -108,14 +121,19 @@ let sampleRate = 1
 let getUser: NonNullable<ErrorLoggerConfig['getUser']> | null = null
 
 /**
- * 캡처 시점의 회원 식별자를 읽는다.
+ * 캡처 시점의 사용자 속성을 읽는다.
+ * 식별자만 넘기는 흔한 경우를 위해 값 하나(`() => 10482`)도 객체와 같이 받는다.
+ *
  * 앱 코드가 던지더라도 에러 수집 자체가 멈추면 안 되므로 삼킨다 —
  * 여기서 던지면 그 에러를 전역 핸들러가 다시 잡아 무한 루프가 된다.
  */
-function currentUser(): unknown {
+function currentUser(): ErrorLogUser | undefined {
   if (getUser === null) return undefined
   try {
-    return getUser()
+    const raw = getUser()
+    if (raw === null || raw === undefined) return undefined
+    if (typeof raw === 'object') return raw
+    return { id: raw }
   } catch {
     return undefined
   }

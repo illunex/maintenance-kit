@@ -14,6 +14,7 @@ export type {
   ErrorLogLevel,
   ErrorLogPayload,
   ErrorLogType,
+  ErrorLogUser,
   ErrorLoggerConfig,
   ErrorLoggerLimits,
   Transport,

@@ -19,6 +19,20 @@ export interface ErrorLogContext {
 }
 
 /**
+ * 앱이 getUser로 넘기는 사용자 속성.
+ * 식별자만 필요하면 객체 대신 값 하나(`() => 10482`)를 돌려줘도 된다.
+ */
+export interface ErrorLogUser {
+  /** 회원 식별자 — 이메일이 아니라 회원 번호처럼 그 자체로는 개인정보가 아닌 값 */
+  id?: string | number | null
+  /**
+   * 요금제·라이선스 등급.
+   * 특정 등급에서만 나는 에러(권한 분기·기능 제한)를 가르는 데 쓴다.
+   */
+  plan?: string | null
+}
+
+/**
  * 세션 단위로 고정인 클라이언트 정보.
  * 파싱값과 원문을 함께 두는 이유는 client.ts의 readClient 주석에 있다.
  */
@@ -50,6 +64,8 @@ export interface ErrorLogEvent {
    * 봉투가 아니라 이벤트에 두는 이유는 한 세션 안에서 로그인·로그아웃으로 바뀌기 때문이다.
    */
   user?: string
+  /** 앱이 넘긴 요금제·라이선스 등급(getUser().plan) */
+  plan?: string
   /** 동일 에러를 묶는 키 */
   fingerprint: string
   /** 같은 fingerprint가 합산된 횟수 */
@@ -124,16 +140,17 @@ export interface ErrorLoggerConfig {
   sampleRate?: number
   limits?: Partial<ErrorLoggerLimits>
   /**
-   * 회원 식별자(member index)를 돌려준다. 없으면 undefined·null을 돌려주면 된다.
+   * 에러가 난 사용자가 누구인지를 돌려준다. 로그인 전이면 undefined·null을 돌려주면 된다.
+   * 식별자만 넘길 때는 값 하나(`() => 10482`)로 줄여 쓸 수 있다.
    *
-   * 프로젝트마다 식별자를 두는 곳(스토어·쿠키·토큰 클레임)이 달라 킷이 직접 읽지 않고
+   * 프로젝트마다 식별자를 두는 곳(스토어·쿠키·응답 필드)이 달라 킷이 직접 읽지 않고
    * 앱이 넘기게 뒀다. 값이 아니라 함수를 받는 이유는, 초기화는 앱 진입 시 1회인데
    * 로그인은 그 뒤에 일어나서 정적 값으로 받으면 로그인 이후 이벤트에 식별자가 비기 때문이다.
    *
-   * 개인정보가 로그로 새지 않도록 `[A-Za-z0-9_-]` 64자 이내만 통과시킨다.
+   * `id`는 개인정보가 로그로 새지 않도록 `[A-Za-z0-9_-]` 64자 이내만 통과시킨다.
    * 이메일·전화번호처럼 그 자체로 개인정보인 값은 통과하지 못하고 경고로 남는다.
    */
-  getUser?: () => string | number | null | undefined
+  getUser?: () => ErrorLogUser | string | number | null | undefined
   /** false면 수집을 완전히 끈다 */
   enabled?: boolean
 }
