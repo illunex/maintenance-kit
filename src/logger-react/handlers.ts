@@ -1,4 +1,9 @@
-import { captureError, flushErrorLogs, stripQuery } from '../logger'
+import {
+  captureError,
+  flushErrorLogs,
+  keptQueryParams,
+  stripQuery,
+} from '../logger'
 import type { ErrorLogType } from '../logger'
 
 /** 배포 후 stale chunk — 실제 프론트 에러 중 가장 흔하다 */
@@ -60,8 +65,15 @@ function isChunkResource(target: Element, tag: string, src: string): boolean {
   }
 }
 
+/**
+ * 발생 화면.
+ * pathname만 쓰면 /insight?tab=momentum 처럼 탭이 쿼리에 있는 화면을 구분할 수 없어,
+ * 앱이 keepQueryParams로 지정한 키는 함께 남긴다.
+ */
 function currentRoute(): string | undefined {
-  return typeof window === 'undefined' ? undefined : window.location.pathname
+  if (typeof window === 'undefined') return undefined
+  const { pathname, search } = window.location
+  return stripQuery(`${pathname}${search}`, keptQueryParams())
 }
 
 export interface GlobalHandlerOptions {

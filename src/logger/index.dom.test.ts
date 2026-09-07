@@ -61,3 +61,31 @@ describe('클라이언트 정보 (브라우저)', () => {
     expect(payloads[0]?.events[1]?.viewport).toBe('390x844')
   })
 })
+
+describe('keepQueryParams', () => {
+  it('지정한 키만 url에 남는다', async () => {
+    const { transport, payloads } = recorder()
+    initErrorLogger({ ...base, transport, keepQueryParams: ['tab'] })
+
+    window.history.replaceState(null, '', '/insight?tab=momentum&token=secret')
+    captureError({ error: new Error('boom') })
+    flushErrorLogs()
+    await vi.waitFor(() => expect(payloads).toHaveLength(1))
+
+    const event = payloads[0]?.events[0]
+    expect(event?.url).toContain('/insight?tab=momentum')
+    expect(event?.url).not.toContain('secret')
+  })
+
+  it('설정하지 않으면 쿼리가 통째로 빠진다', async () => {
+    const { transport, payloads } = recorder()
+    initErrorLogger({ ...base, transport })
+
+    window.history.replaceState(null, '', '/insight?tab=momentum')
+    captureError({ error: new Error('boom') })
+    flushErrorLogs()
+    await vi.waitFor(() => expect(payloads).toHaveLength(1))
+
+    expect(payloads[0]?.events[0]?.url).not.toContain('tab')
+  })
+})

@@ -1,5 +1,7 @@
 import { readBuildValues } from './build-values'
 import { readClient } from './client'
+import { setKeptQueryParams } from './keep-query'
+import { setRedactQueryParams } from './redact-query'
 import { buildEvent } from './event'
 import { resolveLimits } from './limits'
 import { ErrorLogQueue } from './queue'
@@ -40,6 +42,11 @@ export {
 } from './mask'
 export { buildEvent } from './event'
 export { parseBrowser, parseOs, readClient, readViewport } from './client'
+export { keptQueryParams } from './keep-query'
+export {
+  DEFAULT_REDACT_QUERY_KEYS,
+  redactQueryValues,
+} from './redact-query'
 
 /**
  * 초기화 전에 잡힌 이벤트를 잠시 담아두는 버퍼.
@@ -109,6 +116,8 @@ export function initErrorLogger(config: ErrorLoggerConfig = {}): boolean {
   })
   sampleRate = resolveSampleRate(config.sampleRate)
   getUser = typeof config.getUser === 'function' ? config.getUser : null
+  setKeptQueryParams(config.keepQueryParams)
+  setRedactQueryParams(config.redactQueryParams)
 
   // 초기화 전에 쌓인 이벤트를 큐로 옮긴다
   const buffered = preInit
@@ -168,4 +177,6 @@ export function resetErrorLogger(): void {
   preInit = []
   sampleRate = 1
   getUser = null
+  setKeptQueryParams(undefined)
+  setRedactQueryParams(undefined)
 }

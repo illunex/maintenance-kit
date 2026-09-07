@@ -151,6 +151,27 @@ export interface ErrorLoggerConfig {
    * 이메일·전화번호처럼 그 자체로 개인정보인 값은 통과하지 못하고 경고로 남는다.
    */
   getUser?: () => ErrorLogUser | string | number | null | undefined
+  /**
+   * url·context.route에서 남길 쿼리 파라미터 키.
+   *
+   * 쿼리스트링은 개인정보가 딸려 들어오는 가장 흔한 경로라 기본은 전부 버린다.
+   * 다만 `/insight?tab=momentum`처럼 탭·모드가 쿼리에 있는 화면은 통째로 버리면
+   * 어느 화면에서 난 에러인지 알 수 없어, 앱이 키를 콕 집어 남길 수 있게 한다.
+   *
+   * 남긴 값도 개인정보 치환을 거치지만, 애초에 개인정보가 들어갈 수 있는 키는
+   * 넣지 않는 편이 안전하다.
+   */
+  keepQueryParams?: string[]
+  /**
+   * 값을 지울 쿼리 파라미터 키. 기본 목록(`token`·`code`·`state`·`secret` 등)에 **더한다**.
+   *
+   * `keepQueryParams`가 url·route만 다루는 반면 이쪽은 message·stack을 포함해
+   * 문자열 어디에 있든 잡는다. URL이 통째로 에러 메시지에 들어오는 경우
+   * (`Failed to fetch /auth/verify?certData=...`) 쿼리 제거로는 막지 못한다.
+   *
+   * 회사·서비스 고유 이름(`certData` 등)을 여기에 넣는다.
+   */
+  redactQueryParams?: string[]
   /** false면 수집을 완전히 끈다 */
   enabled?: boolean
 }

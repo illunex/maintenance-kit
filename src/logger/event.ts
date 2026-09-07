@@ -1,4 +1,5 @@
 import { readViewport } from './client'
+import { keptQueryParams } from './keep-query'
 import { createFingerprint } from './fingerprint'
 import { FIELD_LIMITS } from './limits'
 import {
@@ -99,7 +100,9 @@ function normalizeError(error: unknown): NormalizedError {
  */
 function currentUrl(): string | undefined {
   if (typeof window === 'undefined') return undefined
-  return scrub(stripQuery(window.location.href)).slice(0, FIELD_LIMITS.url)
+  return scrub(
+    stripQuery(window.location.href, keptQueryParams()),
+  ).slice(0, FIELD_LIMITS.url)
 }
 
 function currentUserAgent(): string | undefined {
