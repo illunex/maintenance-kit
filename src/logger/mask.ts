@@ -1,4 +1,5 @@
 import { keptQueryParams } from './keep-query'
+import { redactQueryValues } from './redact-query'
 import { FIELD_LIMITS } from './limits'
 import { warn } from './warn'
 import type { ErrorLogContext } from './types'
@@ -19,11 +20,16 @@ const PII_PATTERNS: readonly (readonly [RegExp, string])[] = [
   [/\b01[016-9][-\s]?\d{3,4}[-\s]?\d{4}\b/g, '[phone]'],
 ]
 
-/** 값에 섞여 들어온 개인정보를 치환한다 */
+/**
+ * 값에 섞여 들어온 개인정보를 치환한다.
+ *
+ * 쿼리 파라미터 치환을 먼저 돌린다. 자체 토큰은 값 패턴으로는 못 잡고
+ * key=value 형태로만 식별되는데, 뒤의 패턴들이 먼저 값을 건드리면 그 형태가 깨진다.
+ */
 export function scrub(value: string): string {
   return PII_PATTERNS.reduce(
     (acc, [pattern, replacement]) => acc.replace(pattern, replacement),
-    value,
+    redactQueryValues(value),
   )
 }
 

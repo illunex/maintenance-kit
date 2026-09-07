@@ -416,7 +416,40 @@ route: /insight?tab=momentum
 
 지정하지 않은 키는 그대로 버려집니다(`?tab=momentum&token=abc` → `?tab=momentum`).
 남긴 값도 개인정보 치환을 거치지만, **애초에 개인정보가 들어갈 수 있는 키는 넣지 마세요.**
-남기는 순서는 배열 순서를 따릅니다 — 같은 화면이 매번 같은 문자열이어야 로그를 묶어 볼 수 있습니다. `getUser().id`로 넘긴 회원 식별자는 `[A-Za-z0-9_-]` 64자 이내이면서
+남기는 순서는 배열 순서를 따릅니다 — 같은 화면이 매번 같은 문자열이어야 로그를 묶어 볼 수 있습니다.
+
+#### 쿼리 파라미터 값 지우기 (0.6.0~)
+
+`keepQueryParams`는 `url`·`route`만 다룹니다. 실제로 새는 자리는 **`message`와 `stack`** 입니다.
+
+```
+message: "Failed to fetch /auth/verify?certData=eyJhbGci...&code=abc"
+```
+
+URL이 통째로 에러 메시지에 들어오면 쿼리 제거가 손대지 못합니다. 이런 값은 키 이름으로 지웁니다.
+
+기본으로 지우는 키입니다.
+
+```
+token  accessToken  access_token  refreshToken  refresh_token
+idToken  id_token  code  state  secret  password  passwd  pwd
+apiKey  api_key  sig  signature  session  sessionId  auth
+```
+
+회사·서비스 고유 이름은 앱이 추가합니다. **기본 목록에 더해지며, 덮어쓰지 않습니다.**
+
+```tsx
+<ErrorLogProvider redactQueryParams={["certData", "oauthTokenKey"]}>
+```
+
+```
+전: /auth/verify?certData=eyJhbGci...
+후: /auth/verify?certData=[redacted]
+```
+
+키 이름 denylist는 원래 놓치는 게 많아 쓰지 않지만, 쿼리스트링은 `key=value` 형태가
+고정이라 이 방식이 정확하게 동작하는 드문 자리입니다. `keyword=`처럼 앞부분만 겹치는
+다른 파라미터는 건드리지 않습니다. `getUser().id`로 넘긴 회원 식별자는 `[A-Za-z0-9_-]` 64자 이내이면서
 전화번호·주민등록번호 형태가 아닐 때만 실립니다(`plan`은 분류값이라 형태를 강제하지 않고 값 치환만 거칩니다).
 
 `Error`가 아닌 **객체가 throw되면 값이 아니라 형태만** 남깁니다
@@ -437,7 +470,7 @@ route: /insight?tab=momentum
 ### 에러 로거
 
 - `initErrorLogger(config)` / `captureError({ error, type?, level?, context? })` / `flushErrorLogs()` (`/logger`) — `config.getUser`로 회원 식별자·요금제 등급 연결
-- `<ErrorLogProvider getUser? keepQueryParams? captureResource? ignoreResource?>` · `<ErrorLogBoundary>` · `installGlobalHandlers()` (`/logger/react`)
+- `<ErrorLogProvider getUser? keepQueryParams? redactQueryParams? captureResource? ignoreResource?>` · `<ErrorLogBoundary>` · `installGlobalHandlers()` (`/logger/react`)
 - `errorLoggerEnv(options?)` (`/vite`) · `withErrorLogger(nextConfig, options?)` (`/next/config`)
 - `consoleTransport()` · `httpTransport(endpoint)` — 전송 경로 교체용
 - `symbolicateStack(stack, resolve)` (`/symbolicate`) · `maintenance-kit-symbolicate --maps <폴더>` — 압축된 스택을 원본 위치로 복원

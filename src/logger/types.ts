@@ -162,6 +162,16 @@ export interface ErrorLoggerConfig {
    * 넣지 않는 편이 안전하다.
    */
   keepQueryParams?: string[]
+  /**
+   * 값을 지울 쿼리 파라미터 키. 기본 목록(`token`·`code`·`state`·`secret` 등)에 **더한다**.
+   *
+   * `keepQueryParams`가 url·route만 다루는 반면 이쪽은 message·stack을 포함해
+   * 문자열 어디에 있든 잡는다. URL이 통째로 에러 메시지에 들어오는 경우
+   * (`Failed to fetch /auth/verify?certData=...`) 쿼리 제거로는 막지 못한다.
+   *
+   * 회사·서비스 고유 이름(`certData` 등)을 여기에 넣는다.
+   */
+  redactQueryParams?: string[]
   /** false면 수집을 완전히 끈다 */
   enabled?: boolean
 }
