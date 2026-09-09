@@ -85,16 +85,33 @@ export function initErrorLogger(config: ErrorLoggerConfig = {}): boolean {
   }
 
   const build = readBuildValues()
-  const service = config.service ?? build.service
-  const env = config.env ?? build.env
-  const endpoint = config.endpoint ?? build.endpoint
+  const service = config.service ?? build?.service
+  const env = config.env ?? build?.env
+  const endpoint = config.endpoint ?? build?.endpoint
+
+  // 로컬 dev 서버는 수집 대상이 아니다. 정상 상태이므로 경고 없이 넘어간다.
+  if (build?.dev === true && config.enabled !== true) return false
+
+  /**
+   * 빌드 값이 비었을 때 경고할지 판단한다.
+   *
+   * 상수 자체가 없으면(build === undefined) 플러그인이 안 돈 것인데,
+   * Vite dev 서버는 이 모듈을 의존성으로 사전 번들하고 그 경로에는 define이 닿지
+   * 않아 상수가 없는 게 정상이다. 여기서 경고하면 로컬을 켤 때마다 뜬다.
+   * 플러그인이 값을 심었는데 비어 있는 경우만 설정 실수로 보고 경고한다.
+   */
+  const misconfigured = build !== undefined || config.enabled === true
 
   if (service === undefined || service === '') {
-    warn('service를 확인할 수 없어 수집을 시작하지 않습니다. 빌드 플러그인을 추가했는지 확인하세요.')
+    if (misconfigured) {
+      warn('service를 확인할 수 없어 수집을 시작하지 않습니다. 빌드 플러그인을 추가했는지 확인하세요.')
+    }
     return false
   }
   if (env === undefined || env === '') {
-    warn('env를 확인할 수 없어 수집을 시작하지 않습니다. 빌드 플러그인을 추가했는지 확인하세요.')
+    if (misconfigured) {
+      warn('env를 확인할 수 없어 수집을 시작하지 않습니다. 빌드 플러그인을 추가했는지 확인하세요.')
+    }
     return false
   }
 
@@ -108,7 +125,7 @@ export function initErrorLogger(config: ErrorLoggerConfig = {}): boolean {
   queue = new ErrorLogQueue({
     service,
     env,
-    release: config.release ?? build.release,
+    release: config.release ?? build?.release,
     sessionId: resolveSessionId(),
     client: readClient(),
     transport,

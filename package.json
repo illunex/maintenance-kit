@@ -1,6 +1,6 @@
 {
 	"name": "@illunex-front/maintenance-kit",
-	"version": "0.6.0",
+	"version": "0.6.1",
 	"publishConfig": {
 		"access": "public"
 	},
@@ -155,12 +155,12 @@
 		"@types/react": "^19.2.18",
 		"@types/react-dom": "^19.2.4",
 		"jsdom": "^26.1.0",
-		"next": "^16.3.0",
+		"next": "^16.3.4",
 		"react": "^19.2.8",
 		"react-dom": "^19.2.8",
 		"tsup": "^8.5.1",
 		"typescript": "^5.9.3",
-		"vitest": "^4.1.10"
+		"vitest": "^4.1.11"
 	},
 	"bin": {
 		"maintenance-kit-symbolicate": "./dist/symbolicate-cli.cjs"

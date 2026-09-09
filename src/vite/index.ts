@@ -48,7 +48,15 @@ export function errorLoggerEnv(
   const { sourcemap = true, ...overrides } = options
   return {
     name: 'maintenance-kit:error-logger-env',
-    // dev 서버에서는 브랜치가 의미 없고 git 호출 비용만 든다
+    /**
+     * dev 서버에서는 브랜치가 의미 없고 git 호출 비용만 든다.
+     *
+     * Next와 달리 dev 표식조차 심지 않는 이유는, Vite dev가 로거를 의존성으로
+     * 사전 번들하는데 그 esbuild 실행에는 `config.define`이 전달되지 않아
+     * (process.env.NODE_ENV만 넘어간다) 어차피 번들 안까지 닿지 않기 때문이다.
+     * 그래서 Vite dev에서는 상수가 없는 것이 정상이고, 런타임이 그 상태를
+     * 로컬로 보고 조용히 넘어간다.
+     */
     apply: 'build',
     config: () => {
       const info = resolveBuildInfo(overrides)

@@ -302,8 +302,32 @@ preflight를 피하려고 `Content-Type: text/plain;charset=UTF-8`로 보내므�
 큐가 영영 비워지지 않는 값이 조용히 먹히지 않도록).
 
 `endpoint`가 없으면 개발용 `consoleTransport`로 동작하고 콘솔에 경고를 남깁니다.
-`service`·`env`를 확인할 수 없으면 수집을 시작하지 않고 역시 경고를 남깁니다 —
-조용히 비활성되면 발견이 늦기 때문입니다.
+빌드 플러그인이 값을 심었는데 `service`·`env`가 비어 있으면 수집을 시작하지 않고
+경고를 남깁니다 — 조용히 비활성되면 발견이 늦기 때문입니다. git이 없는 도커에서
+빌드해 자동 판별이 실패하는 경우가 여기 해당하니, 플러그인 옵션으로 값을 직접 넘기세요.
+
+### 로컬 dev 서버 (0.6.1~)
+
+로컬 dev 서버에서는 **경고 없이 수집을 시작하지 않습니다.** 배포 환경 로그에 로컬
+에러가 섞이지 않게 하려는 것이고, 설정 실수가 아니므로 콘솔도 건드리지 않습니다.
+
+판별 방식은 번들러마다 다릅니다.
+
+- **Next**: `next dev`면 `withErrorLogger`가 값 판별(git 호출) 없이 dev 표식만 심습니다.
+- **Vite**: `errorLoggerEnv`는 `apply: 'build'`라 dev 서버에서 아예 돌지 않습니다.
+  Vite dev는 이 패키지를 의존성으로 사전 번들하는데 그 esbuild 실행에는
+  `config.define`이 전달되지 않아(`process.env.NODE_ENV`만 넘어갑니다) 표식을 심어도
+  번들 안까지 닿지 않기 때문입니다. 그래서 **빌드 값 자체가 없는 상태**를 로컬로 봅니다.
+
+주의할 점은 **개발 배포 서버(`vite build --mode development` 등)는 그대로 수집된다**는
+것입니다. 플러그인이 도는 빌드이므로 `env: "development"`로 정상 동작합니다.
+`import.meta.env.PROD`로 끄면 이쪽까지 같이 꺼지니 앱에서 따로 막지 마세요.
+
+로컬에서 로거 자체를 확인하려면 `enabled`를 `true`로 두고 `service`·`env`를 직접 넘깁니다.
+
+```tsx
+<ErrorLogProvider enabled service="em-stock-front" env="local">
+```
 
 ### 스택 심볼화 (0.5.0~)
 

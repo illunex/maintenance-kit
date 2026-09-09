@@ -35,6 +35,24 @@ describe('withErrorLogger', () => {
     expect(config.plugins).toHaveLength(1)
   })
 
+  it('next dev에서는 값 판별 없이 dev 표식만 심는다', () => {
+    // 로컬 에러가 배포 환경 로그에 섞이면 안 되고, git 호출 비용도 없어야 한다
+    const config = { plugins: [] as unknown[] }
+    withErrorLogger({}, overrides).webpack?.(config, { ...context, dev: true })
+    expect((config.plugins[0] as FakeDefinePlugin).definitions).toEqual({
+      __MK_LOGGER_BUILD__: JSON.stringify({ dev: true }),
+    })
+  })
+
+  it('next build에서는 표식이 아니라 빌드 값을 심는다', () => {
+    const config = { plugins: [] as unknown[] }
+    withErrorLogger({}, overrides).webpack?.(config, { ...context, dev: false })
+    const { definitions } = config.plugins[0] as FakeDefinePlugin
+    const raw = definitions.__MK_LOGGER_BUILD__
+    expect(raw).toBeDefined()
+    expect(JSON.parse(raw as string)).toMatchObject(overrides)
+  })
+
   it('소스맵은 기본으로 켜지 않는다', () => {
     // Next에는 hidden이 없어 켜면 sourceMappingURL까지 붙어 .map이 공개된다
     expect(withErrorLogger({}).productionBrowserSourceMaps).toBe(false)
