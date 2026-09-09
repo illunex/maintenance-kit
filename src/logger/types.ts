@@ -172,7 +172,13 @@ export interface ErrorLoggerConfig {
    * 회사·서비스 고유 이름(`certData` 등)을 여기에 넣는다.
    */
   redactQueryParams?: string[]
-  /** false면 수집을 완전히 끈다 */
+  /**
+   * false면 수집을 완전히 끈다.
+   *
+   * true는 로컬 dev 서버에서도 강제로 켠다 — 로거 자체를 로컬에서 확인할 때 쓴다.
+   * 이때는 빌드 플러그인이 값을 못 심으므로 `service`·`env`를 직접 넘겨야 한다.
+   * 생략하면 로컬 dev 서버에서는 켜지지 않고, 그 외에는 켜진다.
+   */
   enabled?: boolean
 }
 

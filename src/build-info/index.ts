@@ -108,3 +108,14 @@ export function resolveBuildInfo(overrides: BuildInfoOverrides = {}): BuildInfo 
 export function toDefine(info: BuildInfo): Record<string, string> {
   return { __MK_LOGGER_BUILD__: JSON.stringify(info) }
 }
+
+/**
+ * 로컬 dev 서버에 심을 표식.
+ *
+ * 값을 판별하지 않으므로 git 호출 비용이 없다. 표식을 굳이 심는 이유는,
+ * 상수가 아예 없는 상태와 구분되어야 런타임이 "로컬이라 안 켠다"와
+ * "빌드 설정이 잘못됐다"를 가릴 수 있기 때문이다.
+ */
+export function toDevDefine(): Record<string, string> {
+  return { __MK_LOGGER_BUILD__: JSON.stringify({ dev: true }) }
+}

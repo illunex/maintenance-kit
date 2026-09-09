@@ -1,6 +1,7 @@
 import {
   resolveBuildInfo,
   toDefine,
+  toDevDefine,
   type BuildInfoOverrides,
 } from '../build-info'
 
@@ -19,6 +20,8 @@ interface WebpackConfigLike {
 }
 
 interface WebpackContextLike {
+  /** next dev면 true. 값이 없는 옛 버전도 있어 선택으로 둔다 */
+  dev?: boolean
   webpack: { DefinePlugin: new (definitions: Record<string, string>) => unknown }
 }
 
@@ -64,8 +67,11 @@ export function withErrorLogger(
       // 사용자 webpack이 새 config 객체를 반환하면 먼저 넣은 플러그인이 사라진다.
       // 반환값을 받은 뒤에 주입해야 어느 쪽이든 빌드 값이 남는다.
       const patched = nextConfig.webpack?.(config, context) ?? config
-      const info = resolveBuildInfo(overrides)
-      patched.plugins.push(new context.webpack.DefinePlugin(toDefine(info)))
+      // next dev는 수집 대상이 아니라 값을 판별하지 않고 표식만 심는다.
+      // 로컬 에러가 배포 환경 로그에 섞이지 않게 하는 것이 목적이다.
+      const define =
+        context.dev === true ? toDevDefine() : toDefine(resolveBuildInfo(overrides))
+      patched.plugins.push(new context.webpack.DefinePlugin(define))
       return patched
     },
   }

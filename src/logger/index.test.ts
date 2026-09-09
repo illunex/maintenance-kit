@@ -26,6 +26,8 @@ const base = { service: 'em-stock-front', env: 'production' }
 afterEach(() => {
   resetErrorLogger()
   vi.restoreAllMocks()
+  // restoreAllMocks는 stubGlobal을 되돌리지 않아 다음 테스트로 표식이 샌다
+  vi.unstubAllGlobals()
 })
 
 describe('initErrorLogger', () => {
@@ -45,13 +47,47 @@ describe('initErrorLogger', () => {
     expect(initErrorLogger({ ...base, transport })).toBe(true)
   })
 
-  it('service가 없으면 시작하지 않고 경고를 남긴다', () => {
+  it('플러그인이 심은 값이 비어 있으면 시작하지 않고 경고를 남긴다', () => {
+    // 도커 빌드처럼 git이 없어 판별에 실패한 경우 — 배포 설정 실수라 알려야 한다
+    vi.stubGlobal('__MK_LOGGER_BUILD__', { service: '', env: '' })
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     expect(initErrorLogger({ env: 'production' })).toBe(false)
     expect(warn).toHaveBeenCalled()
   })
 
+  it('빌드 값 자체가 없으면 조용히 시작하지 않는다', () => {
+    // Vite dev 서버는 로거를 사전 번들해 define이 닿지 않으므로 상수가 없는 게 정상이다.
+    // 여기서 경고하면 로컬을 켤 때마다 뜬다
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    expect(initErrorLogger({ env: 'production' })).toBe(false)
+    expect(warn).not.toHaveBeenCalled()
+  })
+
+  it('dev 표식이 있으면 조용히 시작하지 않는다', () => {
+    // next dev가 심는 표식 — 로컬 에러가 배포 환경 로그에 섞이지 않게 한다
+    vi.stubGlobal('__MK_LOGGER_BUILD__', { dev: true })
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const { transport } = recorder()
+    expect(initErrorLogger({ ...base, transport })).toBe(false)
+    expect(warn).not.toHaveBeenCalled()
+  })
+
+  it('enabled가 true면 dev 표식이 있어도 시작한다', () => {
+    // 로거 자체를 로컬에서 확인할 때의 탈출구
+    vi.stubGlobal('__MK_LOGGER_BUILD__', { dev: true })
+    const { transport } = recorder()
+    expect(initErrorLogger({ ...base, transport, enabled: true })).toBe(true)
+  })
+
+  it('enabled가 true인데 service가 없으면 경고를 남긴다', () => {
+    // 명시적으로 켜달라고 했으므로 왜 안 켜졌는지 알려줘야 한다
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    expect(initErrorLogger({ env: 'production', enabled: true })).toBe(false)
+    expect(warn).toHaveBeenCalled()
+  })
+
   it('env가 없으면 시작하지 않는다', () => {
+    vi.stubGlobal('__MK_LOGGER_BUILD__', { service: 'a', env: '' })
     vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     expect(initErrorLogger({ service: 'a' })).toBe(false)
   })
