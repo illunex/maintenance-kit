@@ -1,5 +1,5 @@
 import { readBuildValues } from './build-values'
-import { readClient } from './client'
+import { isBotUserAgent, readClient } from './client'
 import { setKeptQueryParams } from './keep-query'
 import { setRedactQueryParams } from './redact-query'
 import { buildEvent } from './event'
@@ -41,7 +41,13 @@ export {
   truncate,
 } from './mask'
 export { buildEvent } from './event'
-export { parseBrowser, parseOs, readClient, readViewport } from './client'
+export {
+  isBotUserAgent,
+  parseBrowser,
+  parseOs,
+  readClient,
+  readViewport,
+} from './client'
 export { keptQueryParams } from './keep-query'
 export {
   DEFAULT_REDACT_QUERY_KEYS,
@@ -92,6 +98,9 @@ export function initErrorLogger(config: ErrorLoggerConfig = {}): boolean {
   // 로컬 dev 서버는 수집 대상이 아니다. 정상 상태이므로 경고 없이 넘어간다.
   if (build?.dev === true && config.enabled !== true) return false
 
+  // 크롤러도 설정 실수가 아니라 수집 대상이 아닌 것뿐이라 경고 없이 넘어간다
+  if (skipsBot(config.captureBots)) return false
+
   /**
    * 빌드 값이 비었을 때 경고할지 판단한다.
    *
@@ -141,6 +150,17 @@ export function initErrorLogger(config: ErrorLoggerConfig = {}): boolean {
   preInit = []
   buffered.forEach((event) => queue?.add(event))
   return true
+}
+
+function skipsBot(captureBots: ErrorLoggerConfig['captureBots']): boolean {
+  if (captureBots === true) return false
+  if (typeof navigator === 'undefined') return false
+  const userAgent = navigator.userAgent
+  if (typeof userAgent !== 'string' || !isBotUserAgent(userAgent)) return false
+  if (captureBots === undefined || captureBots === false) return true
+
+  // 제품이 고른 봇만 수집한다. /g 패턴의 lastIndex에 휘둘리지 않도록 test 대신 search를 쓴다
+  return !captureBots.some((pattern) => userAgent.search(pattern) !== -1)
 }
 
 let sampleRate = 1

@@ -51,6 +51,30 @@ export function parseOs(userAgent: string): string | undefined {
 }
 
 /**
+ * 검색엔진·링크 미리보기·헤드리스 렌더러.
+ *
+ * 이들은 JS까지 실행하지만 외부 API 요청을 막거나 중간에 끊는 경우가 많아,
+ * 페이지의 API가 한꺼번에 Network Error로 떨어진다. 사용자 영향이 없는데
+ * 세션 예산과 대시보드를 채우므로 수집 대상에서 뺀다.
+ *
+ * `bot\b`로 대부분(Googlebot·bingbot·AdsBot-Google·Applebot·Slackbot 등)을 잡고,
+ * `bot`으로 끝나지 않는 국내·주요 크롤러는 이름을 직접 적는다
+ * (Yeti=네이버, Daumoa=다음, kakaotalk-scrap=카카오 링크 미리보기,
+ * GoogleOther·Google-Extended=구글의 검색 색인 외 수집기).
+ */
+const BOT_PATTERN =
+  /bot\b|crawl|spider|slurp|\byeti\b|daumoa|kakaotalk-scrap|facebookexternalhit|mediapartners-google|google-inspectiontool|googleother|google-extended|headlesschrome|lighthouse|bingpreview/i
+
+/**
+ * 단말 이름 CUBOT(안드로이드 제조사)이 `bot\b`에 걸리므로 먼저 지운다.
+ * lookbehind(`(?<!cu)bot`)는 Safari 16.4 미만에서 정규식 파싱 자체가 실패해
+ * 번들 전체가 죽으므로 쓰지 않는다.
+ */
+export function isBotUserAgent(userAgent: string): boolean {
+  return BOT_PATTERN.test(userAgent.replace(/cubot/gi, ''))
+}
+
+/**
  * 세션 내내 변하지 않는 클라이언트 정보.
  * 이벤트마다 반복해 실으면 요청 예산만 먹으므로 봉투에 한 번만 담는다.
  * 파싱 결과와 함께 원문을 남겨, 규칙이 못 잡은 UA도 서버에서 다시 볼 수 있게 한다.

@@ -111,6 +111,60 @@ describe('initErrorLogger', () => {
     expect(initErrorLogger({ ...base, transport })).toBe(false)
     expect(warn).toHaveBeenCalled()
   })
+
+  const bingbot =
+    'Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm) Chrome/136.0.0.0 Safari/537.36'
+
+  it('크롤러에서는 조용히 시작하지 않는다', () => {
+    // 크롤러 렌더러가 API 요청을 끊어 Network Error가 수십 건씩 쌓이던 문제
+    vi.stubGlobal('navigator', { userAgent: bingbot })
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const { transport } = recorder()
+    expect(initErrorLogger({ ...base, transport })).toBe(false)
+    expect(warn).not.toHaveBeenCalled()
+  })
+
+  it('captureBots가 true면 크롤러에서도 시작한다', () => {
+    vi.stubGlobal('navigator', { userAgent: bingbot })
+    const { transport } = recorder()
+    expect(initErrorLogger({ ...base, transport, captureBots: true })).toBe(true)
+  })
+
+  const googlebot =
+    'Mozilla/5.0 (Linux; Android 6.0.1; Nexus 5X Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Mobile Safari/537.36 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'
+
+  it('captureBots에 고른 봇에서는 시작한다', () => {
+    vi.stubGlobal('navigator', { userAgent: bingbot })
+    const { transport } = recorder()
+    expect(initErrorLogger({ ...base, transport, captureBots: [/bingbot/i] })).toBe(true)
+  })
+
+  it('captureBots에 고르지 않은 봇에서는 조용히 시작하지 않는다', () => {
+    vi.stubGlobal('navigator', { userAgent: googlebot })
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const { transport } = recorder()
+    expect(initErrorLogger({ ...base, transport, captureBots: [/bingbot/i] })).toBe(false)
+    expect(warn).not.toHaveBeenCalled()
+  })
+
+  it('captureBots의 /g 패턴도 매번 같은 결과를 낸다', () => {
+    // test()는 /g 패턴의 lastIndex를 남겨 두 번째 호출이 빗나간다
+    vi.stubGlobal('navigator', { userAgent: bingbot })
+    const captureBots = [/bingbot/gi]
+    const { transport } = recorder()
+    expect(initErrorLogger({ ...base, transport, captureBots })).toBe(true)
+    resetErrorLogger()
+    expect(initErrorLogger({ ...base, transport, captureBots })).toBe(true)
+  })
+
+  it('captureBots 패턴은 일반 브라우저 수집에 영향을 주지 않는다', () => {
+    vi.stubGlobal('navigator', {
+      userAgent:
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36',
+    })
+    const { transport } = recorder()
+    expect(initErrorLogger({ ...base, transport, captureBots: [/bingbot/i] })).toBe(true)
+  })
 })
 
 describe('captureError', () => {

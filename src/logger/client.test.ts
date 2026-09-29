@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseBrowser, parseOs } from './client'
+import { isBotUserAgent, parseBrowser, parseOs } from './client'
 
 const UA = {
   chromeWin: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36',
@@ -55,5 +55,36 @@ describe('parseOs', () => {
 
   it('규칙에 없는 UA는 비운다', () => {
     expect(parseOs('curl/8.4.0')).toBeUndefined()
+  })
+})
+
+describe('isBotUserAgent', () => {
+  it('검색엔진·링크 미리보기 크롤러를 잡는다', () => {
+    const bots = [
+      // 실제 운영 로그에 찍힌 bingbot 렌더러 UA
+      'Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm) Chrome/136.0.0.0 Safari/537.36',
+      'Mozilla/5.0 (Linux; Android 6.0.1; Nexus 5X Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Mobile Safari/537.36 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+      'AdsBot-Google (+http://www.google.com/adsbot.html)',
+      // 실제 운영 로그에 찍힌 GoogleOther UA — 이름에 bot이 없다
+      'Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; GoogleOther) Chrome/153.0.8010.52 Safari/537.36',
+      'Mozilla/5.0 (compatible; Google-Extended)',
+      'Mozilla/5.0 (compatible; Yeti/1.1; +https://naver.me/spd)',
+      'Mozilla/5.0 (compatible; Daum/4.1; +https://cs.daum.net/faq/15/4118.html?faqId=28966) Daumoa',
+      'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/136.0.0.0 Safari/537.36',
+      'Mozilla/5.0 (Linux; Android 11; moto g power (2022)) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Mobile Safari/537.36 Chrome-Lighthouse',
+    ]
+    for (const ua of bots) expect(isBotUserAgent(ua), ua).toBe(true)
+  })
+
+  it('일반 브라우저는 잡지 않는다', () => {
+    for (const ua of Object.values(UA)) expect(isBotUserAgent(ua), ua).toBe(false)
+  })
+
+  // 제조사 이름에 bot이 들어가 `bot\b`에 걸리는 단말 — 실사용자라 수집해야 한다
+  it('CUBOT 단말은 봇으로 보지 않는다', () => {
+    expect(
+      isBotUserAgent('Mozilla/5.0 (Linux; Android 12; CUBOT P60) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Mobile Safari/537.36'),
+    ).toBe(false)
   })
 })
