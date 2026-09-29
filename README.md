@@ -329,6 +329,25 @@ preflight를 피하려고 `Content-Type: text/plain;charset=UTF-8`로 보내므�
 <ErrorLogProvider enabled service="em-stock-front" env="local">
 ```
 
+### 크롤러 제외
+
+검색엔진 크롤러·링크 미리보기·헤드리스 렌더러에서는 **기본적으로 수집하지 않습니다.**
+이들은 JS를 실행하지만 외부 API 요청을 막거나 끊어서, 사용자 영향 없는
+`Network Error`가 한 페이지에 수십 건씩 쌓이고 세션 예산을 먼저 써버립니다.
+Googlebot·bingbot·GoogleOther·네이버 Yeti·다음 Daumoa·카카오 링크 미리보기·HeadlessChrome 등을 잡습니다.
+
+제품에 따라 크롤러 렌더링을 봐야 하면 `captureBots`로 켭니다.
+
+```tsx
+// 모든 봇에서 수집
+<ErrorLogProvider captureBots>
+
+// 고른 봇에서만 수집 — 나머지 봇은 계속 뺀다
+<ErrorLogProvider captureBots={[/bingbot/i, /googlebot/i]}>
+```
+
+패턴은 킷이 봇으로 판별한 뒤에만 적용되므로, 일반 브라우저 수집에는 영향이 없습니다.
+
 ### 스택 심볼화 (0.5.0~)
 
 배포 번들은 압축돼 있어서 수집된 스택이 `at y (index-CtmyWNbP.js:13321:941)`처럼
@@ -494,7 +513,7 @@ apiKey  api_key  sig  signature  session  sessionId  auth
 ### 에러 로거
 
 - `initErrorLogger(config)` / `captureError({ error, type?, level?, context? })` / `flushErrorLogs()` (`/logger`) — `config.getUser`로 회원 식별자·요금제 등급 연결
-- `<ErrorLogProvider getUser? keepQueryParams? redactQueryParams? captureResource? ignoreResource?>` · `<ErrorLogBoundary>` · `installGlobalHandlers()` (`/logger/react`)
+- `<ErrorLogProvider getUser? keepQueryParams? redactQueryParams? captureBots? captureResource? ignoreResource?>` · `<ErrorLogBoundary>` · `installGlobalHandlers()` (`/logger/react`)
 - `errorLoggerEnv(options?)` (`/vite`) · `withErrorLogger(nextConfig, options?)` (`/next/config`)
 - `consoleTransport()` · `httpTransport(endpoint)` — 전송 경로 교체용
 - `symbolicateStack(stack, resolve)` (`/symbolicate`) · `maintenance-kit-symbolicate --maps <폴더>` — 압축된 스택을 원본 위치로 복원
